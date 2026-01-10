@@ -940,6 +940,22 @@ const GLOBAL_STYLE_BLOCK = `
       display: block !important;
     }
   }
+
+  /* PDF Page Break Fixes */
+  .contract-body h1, 
+  .contract-body h2, 
+  .contract-body .party-section, 
+  .contract-body .signature-block, 
+  .contract-body .exhibit-section,
+  .contract-body .payment-structure {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .contract-body .separator {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
 `;
 
 const ensureValue = (value, fallback = "Not Provided") => {
@@ -4114,6 +4130,7 @@ const InsertionOrderGenerator = () => {
       filename: `ppc-insertion-order-${
         formData.buyer.companyName || "buyer"
       }-${Date.now()}.pdf`,
+      pagebreak: { mode: ["avoid-all", "css", "legacy"] },
       image: { type: "jpeg", quality: 0.98 },
       html2canvas: {
         scale: 2,
@@ -4133,6 +4150,18 @@ const InsertionOrderGenerator = () => {
     html2pdf()
       .set(opt)
       .from(signedContractHtml)
+      .toPdf()
+      .get('pdf')
+      .then((pdf) => {
+        const totalPages = pdf.internal.getNumberOfPages();
+        for (let i = 1; i <= totalPages; i++) {
+          pdf.setPage(i);
+          // Add a tiny bit of padding to the bottom to prevent clipping
+          pdf.setFontSize(8);
+          pdf.setTextColor(150);
+          pdf.text(`Page ${i} of ${totalPages}`, 0.5, 10.75);
+        }
+      })
       .save()
       .catch((err) => {
         console.error("PDF generation failed:", err);
@@ -4481,6 +4510,7 @@ const InsertionOrderGenerator = () => {
               setPublisherSignature={setPublisherSignature}
               setBuyerSignatureData={setBuyerSignatureData}
               setPublisherSignatureData={setPublisherSignatureData}
+              docPath={docPath}
               signatureMode={signatureMode}
               setSignatureMode={setSignatureMode}
               onReset={() => {
@@ -8456,7 +8486,32 @@ const ContractView = ({
   isSharedView,
   buyerSignatureData,
   publisherSignatureData,
+  docPath,
+  saving,
 }) => {
+  const [copySuccess, setCopySuccess] = useState(false);
+
+  // Calculate share link for the 'Copy Link' button
+  const shareLink = useMemo(() => {
+    if (!docPath) return "";
+    const pathParts = docPath.split("/");
+    const usersIdx = pathParts.indexOf("users");
+    const ioIdx = pathParts.indexOf("insertionOrders");
+    const uid = usersIdx !== -1 ? pathParts[usersIdx + 1] : pathParts[1];
+    const cid = ioIdx !== -1 ? pathParts[ioIdx + 1] : pathParts[3];
+    return `${window.location.origin}${window.location.pathname}?contractId=${cid}&uid=${uid}`;
+  }, [docPath]);
+
+  const handleCopyLink = async () => {
+    if (!shareLink) return;
+    try {
+      await navigator.clipboard.writeText(shareLink);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy link:", err);
+    }
+  };
   // References for signature canvases - must be declared before useEffects that use them
   const buyerCanvasRef = useRef(null);
   const publisherCanvasRef = useRef(null);
@@ -8537,13 +8592,27 @@ const ContractView = ({
 
           <div className="flex gap-1">
             {!isSharedView && (
-              <button
-                type="button"
-                onClick={onEmailParties}
-                className="inline-flex items-center gap-1 rounded border border-indigo-300 bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700 shadow-sm transition hover:bg-indigo-100"
-              >
-                <Mail className="h-3 w-3" /> Email Link to Parties
-              </button>
+              <div className="flex gap-1">
+                <button
+                  type="button"
+                  onClick={onEmailParties}
+                  className="inline-flex items-center gap-1 rounded border border-indigo-300 bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700 shadow-sm transition hover:bg-indigo-100"
+                >
+                  <Mail className="h-3 w-3" /> Email Link
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCopyLink}
+                  className={`inline-flex items-center gap-1 rounded border border-slate-300 px-2 py-1 text-xs font-medium shadow-sm transition ${
+                    copySuccess 
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+                      : "bg-white text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  <CheckCircle2 className={`h-3 w-3 ${copySuccess ? "text-emerald-500" : "text-slate-400"}`} />
+                  {copySuccess ? "Copied!" : "Copy link"}
+                </button>
+              </div>
             )}
             <button
               type="button"
@@ -8650,18 +8719,20 @@ const ContractView = ({
                     }
                   }}
                   disabled={
+                    saving ||
                     buyerSigned ||
                     (buyerCanvasRef.current &&
                       buyerCanvasRef.current.isEmpty() &&
                       !buyerSignatureData)
                   }
-                  className={`w-full rounded px-3 py-2 text-xs text-white transition-colors ${
+                  className={`w-full rounded px-3 py-2 text-xs text-white transition-colors flex items-center justify-center gap-2 ${
                     formData?.contractType === "CPL2" ||
                     formData?.type === "CPL2"
                       ? "bg-[#0d1130] hover:bg-[#08c1bd]"
                       : "bg-[#24bd68] hover:bg-[#1ea456]"
                   } disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
+                  {saving && <Loader2 className="h-3 w-3 animate-spin" />}
                   {buyerSigned ? "✓ Buyer Signed" : "Submit Buyer Signature"}
                 </button>
               </div>
@@ -8704,18 +8775,20 @@ const ContractView = ({
                     }
                   }}
                   disabled={
+                    saving ||
                     publisherSigned ||
                     (publisherCanvasRef.current &&
                       publisherCanvasRef.current.isEmpty() &&
                       !publisherSignatureData)
                   }
-                  className={`w-full rounded px-3 py-2 text-xs text-white transition-colors ${
+                  className={`w-full rounded px-3 py-2 text-xs text-white transition-colors flex items-center justify-center gap-2 ${
                     formData?.contractType === "CPL2" ||
                     formData?.type === "CPL2"
                       ? "bg-[#0d1130] hover:bg-[#08c1bd]"
                       : "bg-[#24bd68] hover:bg-[#1ea456]"
                   } disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
+                  {saving && <Loader2 className="h-3 w-3 animate-spin" />}
                   {publisherSigned
                     ? "✓ Publisher Signed"
                     : "Submit Publisher Signature"}
