@@ -3305,7 +3305,51 @@ const InsertionOrderGenerator = () => {
   const [creatorUid, setCreatorUid] = useState(null);
   const [contractId, setLocalContractId] = useState(null);
 
+  // Wizard state - must be declared before useEffects that reference them
+  const [currentStep, setCurrentStep] = useState(1);
+  const [completedSteps, setCompletedSteps] = useState(new Set());
+
   const RESEND_API_KEY = "re_3R8KpRr6_Dim7B3YBQ3kmEHbGPFx7FAvQ";
+
+  // Firebase initialization - must happen before any useEffect that uses db
+  useEffect(() => {
+    if (firebaseReady || typeof window === "undefined") {
+      return;
+    }
+
+    try {
+      const config = window.__firebase_config;
+      if (!config) {
+        throw new Error(
+          "Missing global `__firebase_config`. Ensure it is injected before mounting the app."
+        );
+      }
+
+      const targetName = window.__app_id || undefined;
+      let app = null;
+      const apps = getApps();
+      if (apps.length) {
+        app = targetName
+          ? apps.find((existing) => existing.name === targetName) || apps[0]
+          : apps[0];
+      }
+      if (!app) {
+        app = initializeApp(config, targetName);
+      }
+
+      const dbInstance = getFirestore(app);
+      const authInstance = getAuth(app);
+      setFirebaseObjects({ app, db: dbInstance, auth: authInstance });
+    } catch (error) {
+      setFirebaseError(error.message || "Firebase initialization failed");
+    } finally {
+      setFirebaseReady(true);
+    }
+  }, [firebaseReady]);
+
+  // Derived values from firebaseObjects - declared before useEffects that use them
+  const auth = firebaseObjects?.auth;
+  const db = firebaseObjects?.db;
 
   // Effect to load shared contract from URL
   useEffect(() => {
@@ -3477,9 +3521,7 @@ const InsertionOrderGenerator = () => {
     }
   };
 
-  // Wizard state
-  const [currentStep, setCurrentStep] = useState(1);
-  const [completedSteps, setCompletedSteps] = useState(new Set());
+  // Note: currentStep and completedSteps are declared at the top of the component
 
   const branding =
     formData.contractType === "CPL2"
@@ -3720,43 +3762,7 @@ const InsertionOrderGenerator = () => {
     formData.vertical,
   ]);
 
-  useEffect(() => {
-    if (firebaseReady || typeof window === "undefined") {
-      return;
-    }
-
-    try {
-      const config = window.__firebase_config;
-      if (!config) {
-        throw new Error(
-          "Missing global `__firebase_config`. Ensure it is injected before mounting the app."
-        );
-      }
-
-      const targetName = window.__app_id || undefined;
-      let app = null;
-      const apps = getApps();
-      if (apps.length) {
-        app = targetName
-          ? apps.find((existing) => existing.name === targetName) || apps[0]
-          : apps[0];
-      }
-      if (!app) {
-        app = initializeApp(config, targetName);
-      }
-
-      const db = getFirestore(app);
-      const auth = getAuth(app);
-      setFirebaseObjects({ app, db, auth });
-    } catch (error) {
-      setFirebaseError(error.message || "Firebase initialization failed");
-    } finally {
-      setFirebaseReady(true);
-    }
-  }, [firebaseReady]);
-
-  const auth = firebaseObjects?.auth;
-  const db = firebaseObjects?.db;
+  // Note: Firebase initialization useEffect and auth/db declarations moved to top of component
 
   useEffect(() => {
     if (!auth) {
