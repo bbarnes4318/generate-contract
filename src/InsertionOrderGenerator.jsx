@@ -3427,24 +3427,21 @@ const InsertionOrderGenerator = () => {
   }, [db, firebaseReady, authStatus]);
 
   // Real-time listener for signature updates
+  // Real-time listener for signature updates
   useEffect(() => {
     if (!docPath || !db || authStatus !== "authed") return;
 
+    // Remove signature data dependencies to prevent listener churning
     const unsubscribe = onSnapshot(doc(db, docPath), (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
         if (data.signatures) {
-          if (
-            data.signatures.buyer &&
-            data.signatures.buyer !== buyerSignatureData
-          ) {
+          // Always update state if data exists, let React handle diffing
+          if (data.signatures.buyer) {
             setBuyerSignatureData(data.signatures.buyer);
             setBuyerSignature("drawn");
           }
-          if (
-            data.signatures.publisher &&
-            data.signatures.publisher !== publisherSignatureData
-          ) {
+          if (data.signatures.publisher) {
             setPublisherSignatureData(data.signatures.publisher);
             setPublisherSignature("drawn");
           }
@@ -3458,7 +3455,7 @@ const InsertionOrderGenerator = () => {
     });
 
     return () => unsubscribe();
-  }, [docPath, db, authStatus, buyerSignatureData, publisherSignatureData]);
+  }, [docPath, db, authStatus]);  // Removed signature data dependencies
 
   const handleEmailParties = async () => {
     if (!docPath) {
@@ -4298,6 +4295,9 @@ const InsertionOrderGenerator = () => {
       console.error("Error saving signature:", error);
       setUiError("Failed to save signature: " + (error.permission ? "Permission denied. Please ensure you have access to sign this document." : error.message));
     } finally {
+      setSaving(false);
+    }
+  };
       setSaving(false);
     }
   };
