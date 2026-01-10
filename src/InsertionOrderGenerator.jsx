@@ -4245,14 +4245,31 @@ const InsertionOrderGenerator = () => {
     try {
       setSaving(true);
       setUiError(null);
+
+      // Read-Modify-Write pattern to ensure 100% safety against overwrites
+      const docRef = doc(db, docPath);
+      const docSnap = await getDoc(docRef);
       
-      const willBeFinalized =
-        (party === "buyer" && publisherSignatureData) ||
-        (party === "publisher" && buyerSignatureData);
+      if (!docSnap.exists()) {
+        throw new Error("Document does not exist");
+      }
+
+      const currentData = docSnap.data();
+      const currentSignatures = currentData.signatures || {};
+      
+      // Merge new signature into existing
+      const newSignatures = {
+        ...currentSignatures,
+        [party]: signatureData
+      };
+
+      // Check finalization condition based on the MERGED data
+      const otherParty = party === "buyer" ? "publisher" : "buyer";
+      const willBeFinalized = !!newSignatures[party] && !!newSignatures[otherParty];
 
       const updateData = {
         updatedAt: serverTimestamp(),
-        [`signatures.${party}`]: signatureData
+        signatures: newSignatures
       };
 
       if (willBeFinalized) {
@@ -4260,10 +4277,10 @@ const InsertionOrderGenerator = () => {
         updateData.signedAt = serverTimestamp();
       }
 
-      // Use updateDoc with dot notation to target specific map fields
-      // This is safer than setDoc with merge for nested updates
-      await updateDoc(doc(db, docPath), updateData);
+      // Update with the full signatures object
+      await updateDoc(docRef, updateData);
 
+      // Update local state
       if (party === "buyer") {
         setBuyerSignatureData(signatureData);
         setBuyerSignature("drawn");
