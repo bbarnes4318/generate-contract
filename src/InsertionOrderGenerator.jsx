@@ -4253,7 +4253,9 @@ const InsertionOrderGenerator = () => {
 
       const updateData = {
         updatedAt: serverTimestamp(),
-        [`signatures.${party}`]: signatureData
+        signatures: {
+          [party]: signatureData
+        }
       };
 
       if (willBeFinalized) {
@@ -4261,9 +4263,8 @@ const InsertionOrderGenerator = () => {
         updateData.signedAt = serverTimestamp();
       }
 
-      // Use setDoc with merge:true AND dot notation
-      // This creates the signatures map if missing, AND updates only the specific key
-      // This is the most robust way to persist the signature
+      // Use setDoc with merge:true and NESTED objects (not dot notation)
+      // This ensures proper deep merging of the signatures map without overwriting
       await setDoc(doc(db, docPath), updateData, { merge: true });
 
       if (party === "buyer") {
