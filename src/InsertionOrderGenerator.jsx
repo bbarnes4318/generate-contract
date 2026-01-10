@@ -1991,14 +1991,15 @@ My Commission Expires: ${ensureValue(formData?.llcNotaryExpiration)}</p>
 
   // Robust check for CPL2 to ensure correct branding
   const isAce = formData.contractType === "CPL2" || formData.type === "CPL2";
-  
+
   const branding = isAce
     ? {
         logo: "/ace-logo.png",
         primary: "#0d1130", // Explicitly requested darker blue
         secondary: "#08c1bd", // Explicitly requested teal
         companyName: "Ace Solutions Group",
-        addressLine1: "Suite No 102, 12781 Darby Brooke Ct, Woodbridge, VA 22192",
+        addressLine1:
+          "Suite No 102, 12781 Darby Brooke Ct, Woodbridge, VA 22192",
         phone: "(844) 572-1770",
       }
     : {
@@ -3356,11 +3357,17 @@ const InsertionOrderGenerator = () => {
       if (docSnap.exists()) {
         const data = docSnap.data();
         if (data.signatures) {
-          if (data.signatures.buyer && data.signatures.buyer !== buyerSignatureData) {
+          if (
+            data.signatures.buyer &&
+            data.signatures.buyer !== buyerSignatureData
+          ) {
             setBuyerSignatureData(data.signatures.buyer);
             setBuyerSignature("drawn");
           }
-          if (data.signatures.publisher && data.signatures.publisher !== publisherSignatureData) {
+          if (
+            data.signatures.publisher &&
+            data.signatures.publisher !== publisherSignatureData
+          ) {
             setPublisherSignatureData(data.signatures.publisher);
             setPublisherSignature("drawn");
           }
@@ -3387,13 +3394,13 @@ const InsertionOrderGenerator = () => {
     // Look for indices relative to 'users' and 'insertionOrders'
     const usersIdx = pathParts.indexOf("users");
     const ioIdx = pathParts.indexOf("insertionOrders");
-    
+
     const uid = usersIdx !== -1 ? pathParts[usersIdx + 1] : pathParts[1];
     const cid = ioIdx !== -1 ? pathParts[ioIdx + 1] : pathParts[3];
-    
+
     // Fallback if index-based split is wrong
     const shareLink = `${window.location.origin}${window.location.pathname}?contractId=${cid}&uid=${uid}`;
-    
+
     const sendResendEmail = async (toEmail, partyName) => {
       const emailHtml = `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
@@ -3420,7 +3427,7 @@ const InsertionOrderGenerator = () => {
         const response = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: {
-            "Authorization": `Bearer ${RESEND_API_KEY}`,
+            Authorization: `Bearer ${RESEND_API_KEY}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
@@ -3451,14 +3458,20 @@ const InsertionOrderGenerator = () => {
         await sendResendEmail(formData.publisher.email, "Publisher");
         sentCount++;
       }
-      
+
       if (sentCount > 0) {
-        setUiError(`Successfully sent ${sentCount} email(s) with the signing link.`);
+        setUiError(
+          `Successfully sent ${sentCount} email(s) with the signing link.`
+        );
       } else {
         setUiError("No email addresses found for Buyer or Publisher.");
       }
     } catch (error) {
-      setUiError("Error sending emails: " + error.message + ". Note: Browser may block Resend API due to CORS.");
+      setUiError(
+        "Error sending emails: " +
+          error.message +
+          ". Note: Browser may block Resend API due to CORS."
+      );
     } finally {
       setSaving(false);
     }
@@ -3554,7 +3567,10 @@ const InsertionOrderGenerator = () => {
           ) {
             return true; // Allow manual navigation, don't auto-advance
           }
-          if (formData.contractType === "CPL" || formData.contractType === "CPL2") {
+          if (
+            formData.contractType === "CPL" ||
+            formData.contractType === "CPL2"
+          ) {
             return true;
           }
           return buyerFieldsComplete && publisherFieldsComplete;
@@ -4164,34 +4180,35 @@ const InsertionOrderGenerator = () => {
       setUiError("Contract document not found. Generate it first.");
       return;
     }
-    
+
     try {
       setSaving(true);
       const updateData = {
         updatedAt: serverTimestamp(),
-        [`signatures.${party}`]: signatureData
+        [`signatures.${party}`]: signatureData,
       };
-      
-      const willBeFinalized = (party === 'buyer' && publisherSignatureData) || 
-                             (party === 'publisher' && buyerSignatureData);
-      
+
+      const willBeFinalized =
+        (party === "buyer" && publisherSignatureData) ||
+        (party === "publisher" && buyerSignatureData);
+
       if (willBeFinalized) {
-        updateData.status = 'finalized';
+        updateData.status = "finalized";
         updateData.signedAt = serverTimestamp();
       }
-      
+
       await updateDoc(doc(db, docPath), updateData);
-      
-      if (party === 'buyer') {
+
+      if (party === "buyer") {
         setBuyerSignatureData(signatureData);
-        setBuyerSignature('drawn');
+        setBuyerSignature("drawn");
       } else {
         setPublisherSignatureData(signatureData);
-        setPublisherSignature('drawn');
+        setPublisherSignature("drawn");
       }
-      
+
       if (willBeFinalized) {
-        setContractStatus('finalized');
+        setContractStatus("finalized");
       }
     } catch (error) {
       console.error("Error saving signature:", error);
@@ -4456,7 +4473,11 @@ const InsertionOrderGenerator = () => {
                 setCurrentStep(1);
                 setCompletedSteps(new Set());
                 if (isSharedView) {
-                  window.history.replaceState({}, document.title, window.location.pathname);
+                  window.history.replaceState(
+                    {},
+                    document.title,
+                    window.location.pathname
+                  );
                   setIsSharedView(false);
                 }
               }}
@@ -4616,7 +4637,7 @@ const WizardInterface = ({
       case 4:
         // CPL2 logic: Step 4 is Review & Generate
         if (formData.contractType === "CPL2") {
-           return (
+          return (
             <ReviewGenerateStep
               formData={formData}
               onGenerate={onGenerate}
@@ -4695,9 +4716,7 @@ const WizardInterface = ({
             </p>
           </div>
 
-          <div className="flex-1 overflow-y-auto">
-            {renderStepContent()}
-          </div>
+          <div className="flex-1 overflow-y-auto">{renderStepContent()}</div>
 
           {/* Navigation - ALWAYS VISIBLE */}
           <div
@@ -4744,11 +4763,11 @@ const WizardInterface = ({
                   formData.type !== "Auto Insurance LLC Operating Agreement" &&
                   formData.vertical !== "LLC Operating Agreement"
                 ) {
-                   if (formData.contractType === "CPL2") {
-                      prevStep = 3; 
-                   } else {
-                      prevStep = 3; // Go back to Requirements step for regular campaigns
-                   }
+                  if (formData.contractType === "CPL2") {
+                    prevStep = 3;
+                  } else {
+                    prevStep = 3; // Go back to Requirements step for regular campaigns
+                  }
                 }
                 setCurrentStep(prevStep);
               }}
@@ -6529,8 +6548,8 @@ const CampaignDetailsStep = ({ formData, onFieldChange, onToggleArray }) => {
 
       {formData.contractType === "CPL2" && (
         <div className="mt-4 border-t border-slate-200 pt-4">
-           {/* Merged Compliance Section for CPL2 */}
-           <div className="space-y-2">
+          {/* Merged Compliance Section for CPL2 */}
+          <div className="space-y-2">
             <h3 className="text-sm font-semibold text-slate-900">
               Compliance Options
             </h3>
@@ -6559,7 +6578,9 @@ const CampaignDetailsStep = ({ formData, onFieldChange, onToggleArray }) => {
                           name="proof-merged"
                           className="h-3 w-3 border-slate-300 text-indigo-600 focus:ring-indigo-500"
                           checked={formData.proofOfConsent === option}
-                          onChange={() => onFieldChange("proofOfConsent", option)}
+                          onChange={() =>
+                            onFieldChange("proofOfConsent", option)
+                          }
                         />
                         <span className="text-xs">{option}</span>
                       </label>
@@ -6750,7 +6771,7 @@ const RequirementsStep = ({ formData, onToggleArray, onFieldChange }) => {
           <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
             Compliance Configuration
           </h3>
-          
+
           <div className="space-y-1">
             <label className="block text-xs font-medium text-slate-700">
               Proof of Consent
@@ -7758,8 +7779,14 @@ const ReviewGenerateStep = ({
         }}
       >
         <div className="flex items-center gap-3 mb-4">
-          <ShieldCheck className="h-6 w-6" style={{ color: styles.iconColor }} />
-          <h3 className="text-lg font-semibold" style={{ color: styles.titleColor }}>
+          <ShieldCheck
+            className="h-6 w-6"
+            style={{ color: styles.iconColor }}
+          />
+          <h3
+            className="text-lg font-semibold"
+            style={{ color: styles.titleColor }}
+          >
             Ready to Generate Contract
           </h3>
         </div>
@@ -7774,7 +7801,10 @@ const ReviewGenerateStep = ({
             <h4 className="font-medium" style={{ color: styles.titleColor }}>
               Campaign Summary
             </h4>
-            <div className="text-sm space-y-1" style={{ color: styles.textColor }}>
+            <div
+              className="text-sm space-y-1"
+              style={{ color: styles.textColor }}
+            >
               <div>
                 <strong>Vertical:</strong> {formData.vertical}
               </div>
@@ -8416,15 +8446,22 @@ const ContractView = ({
   buyerSignatureData,
   publisherSignatureData,
 }) => {
+  // References for signature canvases - must be declared before useEffects that use them
+  const buyerCanvasRef = useRef(null);
+  const publisherCanvasRef = useRef(null);
+
   // Local state for UI feedback, but primarily driven by props
   const [buyerSigned, setBuyerSigned] = useState(!!buyerSignatureData);
-  const [publisherSigned, setPublisherSigned] = useState(!!publisherSignatureData);
+  const [publisherSigned, setPublisherSigned] = useState(
+    !!publisherSignatureData
+  );
   const [signatureProcess, setSignatureProcess] = useState("pending");
+  const [zoomLevel, setZoomLevel] = useState(100);
 
   useEffect(() => {
     setBuyerSigned(!!buyerSignatureData);
     setPublisherSigned(!!publisherSignatureData);
-    
+
     if (buyerSignatureData && publisherSignatureData) {
       setSignatureProcess("completed");
     } else if (buyerSignatureData) {
@@ -8445,13 +8482,6 @@ const ContractView = ({
       publisherCanvasRef.current.fromDataURL(publisherSignatureData);
     }
   }, [buyerSignatureData, publisherSignatureData]);
-
-  // Zoom controls
-  const [zoomLevel, setZoomLevel] = useState(100);
-
-  // References for signature canvases
-  const buyerCanvasRef = useRef(null);
-  const publisherCanvasRef = useRef(null);
 
   return (
     <div className="h-full flex flex-col">
@@ -8598,16 +8628,25 @@ const ContractView = ({
                 <button
                   type="button"
                   onClick={() => {
-                    if (buyerCanvasRef.current && !buyerCanvasRef.current.isEmpty()) {
+                    if (
+                      buyerCanvasRef.current &&
+                      !buyerCanvasRef.current.isEmpty()
+                    ) {
                       const signatureData = buyerCanvasRef.current.toDataURL();
-                      onSubmitSignature('buyer', signatureData);
+                      onSubmitSignature("buyer", signatureData);
                     } else if (buyerSignatureData) {
-                       onSubmitSignature('buyer', buyerSignatureData);
+                      onSubmitSignature("buyer", buyerSignatureData);
                     }
                   }}
-                  disabled={buyerSigned || (buyerCanvasRef.current && buyerCanvasRef.current.isEmpty() && !buyerSignatureData)}
+                  disabled={
+                    buyerSigned ||
+                    (buyerCanvasRef.current &&
+                      buyerCanvasRef.current.isEmpty() &&
+                      !buyerSignatureData)
+                  }
                   className={`w-full rounded px-3 py-2 text-xs text-white transition-colors ${
-                    formData?.contractType === "CPL2" || formData?.type === "CPL2"
+                    formData?.contractType === "CPL2" ||
+                    formData?.type === "CPL2"
                       ? "bg-[#0d1130] hover:bg-[#08c1bd]"
                       : "bg-[#24bd68] hover:bg-[#1ea456]"
                   } disabled:opacity-50 disabled:cursor-not-allowed`}
@@ -8642,16 +8681,26 @@ const ContractView = ({
                 <button
                   type="button"
                   onClick={() => {
-                    if (publisherCanvasRef.current && !publisherCanvasRef.current.isEmpty()) {
-                      const signatureData = publisherCanvasRef.current.toDataURL();
-                      onSubmitSignature('publisher', signatureData);
+                    if (
+                      publisherCanvasRef.current &&
+                      !publisherCanvasRef.current.isEmpty()
+                    ) {
+                      const signatureData =
+                        publisherCanvasRef.current.toDataURL();
+                      onSubmitSignature("publisher", signatureData);
                     } else if (publisherSignatureData) {
-                      onSubmitSignature('publisher', publisherSignatureData);
+                      onSubmitSignature("publisher", publisherSignatureData);
                     }
                   }}
-                  disabled={publisherSigned || (publisherCanvasRef.current && publisherCanvasRef.current.isEmpty() && !publisherSignatureData)}
+                  disabled={
+                    publisherSigned ||
+                    (publisherCanvasRef.current &&
+                      publisherCanvasRef.current.isEmpty() &&
+                      !publisherSignatureData)
+                  }
                   className={`w-full rounded px-3 py-2 text-xs text-white transition-colors ${
-                    formData?.contractType === "CPL2" || formData?.type === "CPL2"
+                    formData?.contractType === "CPL2" ||
+                    formData?.type === "CPL2"
                       ? "bg-[#0d1130] hover:bg-[#08c1bd]"
                       : "bg-[#24bd68] hover:bg-[#1ea456]"
                   } disabled:opacity-50 disabled:cursor-not-allowed`}
