@@ -28,7 +28,6 @@ import {
   getFirestore,
   onSnapshot,
   serverTimestamp,
-  setDoc,
   updateDoc,
 } from "firebase/firestore";
 import {
@@ -4253,9 +4252,7 @@ const InsertionOrderGenerator = () => {
 
       const updateData = {
         updatedAt: serverTimestamp(),
-        signatures: {
-          [party]: signatureData
-        }
+        [`signatures.${party}`]: signatureData
       };
 
       if (willBeFinalized) {
@@ -4263,8 +4260,9 @@ const InsertionOrderGenerator = () => {
         updateData.signedAt = serverTimestamp();
       }
 
-      // Use setDoc with merge to ensure signatures map exists and nested fields update correctly
-      await setDoc(doc(db, docPath), updateData, { merge: true });
+      // Use updateDoc with dot notation to specific nested signature field
+      // This prevents overwriting the entire signatures map
+      await updateDoc(doc(db, docPath), updateData);
 
       if (party === "buyer") {
         setBuyerSignatureData(signatureData);
