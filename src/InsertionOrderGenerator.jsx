@@ -28,7 +28,6 @@ import {
   getFirestore,
   onSnapshot,
   serverTimestamp,
-  setDoc,
   updateDoc,
 } from "firebase/firestore";
 import {
@@ -4253,9 +4252,7 @@ const InsertionOrderGenerator = () => {
 
       const updateData = {
         updatedAt: serverTimestamp(),
-        signatures: {
-          [party]: signatureData
-        }
+        [`signatures.${party}`]: signatureData
       };
 
       if (willBeFinalized) {
@@ -4263,9 +4260,9 @@ const InsertionOrderGenerator = () => {
         updateData.signedAt = serverTimestamp();
       }
 
-      // Use setDoc with merge:true and NESTED objects (not dot notation)
-      // This ensures proper deep merging of the signatures map without overwriting
-      await setDoc(doc(db, docPath), updateData, { merge: true });
+      // Use updateDoc with dot notation to target specific map fields
+      // This is safer than setDoc with merge for nested updates
+      await updateDoc(doc(db, docPath), updateData);
 
       if (party === "buyer") {
         setBuyerSignatureData(signatureData);
@@ -4326,7 +4323,11 @@ const InsertionOrderGenerator = () => {
       return;
     }
 
-    if (!buyerSignature.trim() || !publisherSignature.trim()) {
+    // Check if we have signatures in either format (drawn data or typed text)
+    const hasBuyerSig = buyerSignatureData || buyerSignature.trim();
+    const hasPubSig = publisherSignatureData || publisherSignature.trim();
+
+    if (!hasBuyerSig || !hasPubSig) {
       setUiError(
         "Both the Buyer/Broker and Publisher signatures are required to finalize."
       );
@@ -4340,8 +4341,8 @@ const InsertionOrderGenerator = () => {
         updatedAt: serverTimestamp(),
         signedAt: serverTimestamp(),
         signatures: {
-          buyer: buyerSignature.trim(),
-          publisher: publisherSignature.trim(),
+          buyer: buyerSignatureData || buyerSignature.trim(),
+          publisher: publisherSignatureData || publisherSignature.trim(),
         },
       });
       setUiError(null);
