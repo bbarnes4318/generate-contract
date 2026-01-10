@@ -28,6 +28,7 @@ import {
   getFirestore,
   onSnapshot,
   serverTimestamp,
+  setDoc,
   updateDoc,
 } from "firebase/firestore";
 import {
@@ -4260,9 +4261,10 @@ const InsertionOrderGenerator = () => {
         updateData.signedAt = serverTimestamp();
       }
 
-      // Use updateDoc with dot notation to specific nested signature field
-      // This prevents overwriting the entire signatures map
-      await updateDoc(doc(db, docPath), updateData);
+      // Use setDoc with merge:true AND dot notation
+      // This creates the signatures map if missing, AND updates only the specific key
+      // This is the most robust way to persist the signature
+      await setDoc(doc(db, docPath), updateData, { merge: true });
 
       if (party === "buyer") {
         setBuyerSignatureData(signatureData);
