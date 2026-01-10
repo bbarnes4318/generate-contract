@@ -1,6 +1,6 @@
 
 export default async function handler(req, res) {
-  // Add CORS headers for local development if needed
+  // Add CORS headers
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
@@ -25,6 +25,7 @@ export default async function handler(req, res) {
   }
 
   const RESEND_API_KEY = "re_3R8KpRr6_Dim7B3YBQ3kmEHbGPFx7FAvQ";
+  const fromEmail = process.env.RESEND_FROM_EMAIL || "contracts@acesolutions.digital";
 
   try {
     const response = await fetch("https://api.resend.com/emails", {
@@ -34,7 +35,7 @@ export default async function handler(req, res) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "contracts@perenroll.com",
+        from: `PPC Contracts <${fromEmail}>`,
         to: Array.isArray(to) ? to : [to],
         subject,
         html,
@@ -45,6 +46,15 @@ export default async function handler(req, res) {
 
     if (!response.ok) {
       console.error("Resend API error:", data);
+      
+      // Provide a very specific error if it's a domain verification issue
+      if (data.message && data.message.includes("not verified")) {
+        return res.status(403).json({ 
+          message: `Domain Verification Required: The email domain '${fromEmail.split('@')[1]}' must be verified in your Resend dashboard (https://resend.com/domains) before you can send emails.`,
+          suggestion: "Please verify your domain or set the RESEND_FROM_EMAIL environment variable to a verified domain."
+        });
+      }
+      
       return res.status(response.status).json(data);
     }
 

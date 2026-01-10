@@ -3297,6 +3297,7 @@ const InsertionOrderGenerator = () => {
   const [negotiationMode, setNegotiationMode] = useState(false);
   const [negotiationNote, setNegotiationNote] = useState("");
   const [uiError, setUiError] = useState(null);
+  const [uiSuccess, setUiSuccess] = useState(null);
   // Contract status tracked internally but not currently displayed
   const [_contractStatus, setContractStatus] = useState("draft");
 
@@ -3433,6 +3434,7 @@ const InsertionOrderGenerator = () => {
 
     setSaving(true);
     setUiError(null);
+    setUiSuccess(null);
 
     const pathParts = docPath.split("/");
     // Look for indices relative to 'users' and 'insertionOrders'
@@ -3502,7 +3504,7 @@ const InsertionOrderGenerator = () => {
       }
 
       if (sentCount > 0) {
-        setUiError(
+        setUiSuccess(
           `Successfully sent ${sentCount} email(s) with the signing link.`
         );
       } else {
@@ -4377,6 +4379,12 @@ const InsertionOrderGenerator = () => {
         {uiError && (
           <div className="flex-shrink-0 mx-4 mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
             {uiError}
+          </div>
+        )}
+
+        {uiSuccess && (
+          <div className="flex-shrink-0 mx-4 mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+            {uiSuccess}
           </div>
         )}
 
