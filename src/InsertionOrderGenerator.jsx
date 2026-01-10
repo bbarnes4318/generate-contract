@@ -8736,20 +8736,36 @@ const ContractView = ({
                 <div className="text-sm font-medium text-slate-700 mb-2">
                   Buyer Signature {buyerSigned && "✓"}
                 </div>
-                <div className="h-24 border-2 border-slate-300 rounded bg-white">
-                  <SignatureCanvas
-                    canvasProps={{ className: "w-full h-full" }}
-                    ref={(ref) => {
-                      buyerCanvasRef.current = ref;
-                    }}
-                    onEnd={() => {
-                      if (buyerCanvasRef.current) {
-                        const signatureData =
-                          buyerCanvasRef.current.toDataURL();
-                        setBuyerSignatureData(signatureData);
-                      }
-                    }}
-                  />
+                <div className="h-24 border-2 border-slate-300 rounded bg-white overflow-hidden relative">
+                  {buyerSignatureData ? (
+                    <div className="w-full h-full flex items-center justify-center bg-slate-50 group">
+                      <img 
+                        src={buyerSignatureData} 
+                        alt="Buyer Signature" 
+                        className="max-h-full max-w-full object-contain"
+                      />
+                      {!saving && (
+                        <button
+                          onClick={() => {
+                            if (window.confirm("Are you sure you want to clear this signature?")) {
+                              setBuyerSignatureData(null);
+                              setBuyerSigned(false);
+                            }
+                          }}
+                          className="absolute inset-0 bg-black/50 text-white text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
+                        >
+                          Click to Re-sign
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <SignatureCanvas
+                      canvasProps={{ className: "w-full h-full" }}
+                      ref={(ref) => {
+                        buyerCanvasRef.current = ref;
+                      }}
+                    />
+                  )}
                 </div>
                 <div className="text-xs text-slate-500 mt-1 mb-2">
                   {formData?.buyer?.companyName} Authorized Signatory
@@ -8757,23 +8773,14 @@ const ContractView = ({
                 <button
                   type="button"
                   onClick={() => {
-                    if (
-                      buyerCanvasRef.current &&
-                      !buyerCanvasRef.current.isEmpty()
-                    ) {
+                    if (!buyerSignatureData && buyerCanvasRef.current && !buyerCanvasRef.current.isEmpty()) {
                       const signatureData = buyerCanvasRef.current.toDataURL();
                       onSubmitSignature("buyer", signatureData);
                     } else if (buyerSignatureData) {
-                      onSubmitSignature("buyer", buyerSignatureData);
+                      // Already signed/saved
                     }
                   }}
-                  disabled={
-                    saving ||
-                    buyerSigned ||
-                    (buyerCanvasRef.current &&
-                      buyerCanvasRef.current.isEmpty() &&
-                      !buyerSignatureData)
-                  }
+                  disabled={saving || (buyerSigned && !!buyerSignatureData)}
                   className={`w-full rounded px-3 py-2 text-xs text-white transition-colors flex items-center justify-center gap-2 ${
                     formData?.contractType === "CPL2" ||
                     formData?.type === "CPL2"
@@ -8791,20 +8798,36 @@ const ContractView = ({
                 <div className="text-sm font-medium text-slate-700 mb-2">
                   Publisher Signature {publisherSigned && "✓"}
                 </div>
-                <div className="h-24 border-2 border-slate-300 rounded bg-white">
-                  <SignatureCanvas
-                    canvasProps={{ className: "w-full h-full" }}
-                    ref={(ref) => {
-                      publisherCanvasRef.current = ref;
-                    }}
-                    onEnd={() => {
-                      if (publisherCanvasRef.current) {
-                        const signatureData =
-                          publisherCanvasRef.current.toDataURL();
-                        setPublisherSignatureData(signatureData);
-                      }
-                    }}
-                  />
+                <div className="h-24 border-2 border-slate-300 rounded bg-white overflow-hidden relative">
+                  {publisherSignatureData ? (
+                    <div className="w-full h-full flex items-center justify-center bg-slate-50 group">
+                      <img 
+                        src={publisherSignatureData} 
+                        alt="Publisher Signature" 
+                        className="max-h-full max-w-full object-contain"
+                      />
+                      {!saving && (
+                        <button
+                          onClick={() => {
+                            if (window.confirm("Are you sure you want to clear this signature?")) {
+                              setPublisherSignatureData(null);
+                              setPublisherSigned(false);
+                            }
+                          }}
+                          className="absolute inset-0 bg-black/50 text-white text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
+                        >
+                          Click to Re-sign
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <SignatureCanvas
+                      canvasProps={{ className: "w-full h-full" }}
+                      ref={(ref) => {
+                        publisherCanvasRef.current = ref;
+                      }}
+                    />
+                  )}
                 </div>
                 <div className="text-xs text-slate-500 mt-1 mb-2">
                   {formData?.publisher?.companyName} Authorized Signatory
@@ -8812,24 +8835,14 @@ const ContractView = ({
                 <button
                   type="button"
                   onClick={() => {
-                    if (
-                      publisherCanvasRef.current &&
-                      !publisherCanvasRef.current.isEmpty()
-                    ) {
-                      const signatureData =
-                        publisherCanvasRef.current.toDataURL();
+                    if (!publisherSignatureData && publisherCanvasRef.current && !publisherCanvasRef.current.isEmpty()) {
+                      const signatureData = publisherCanvasRef.current.toDataURL();
                       onSubmitSignature("publisher", signatureData);
                     } else if (publisherSignatureData) {
-                      onSubmitSignature("publisher", publisherSignatureData);
+                      // Already signed/saved
                     }
                   }}
-                  disabled={
-                    saving ||
-                    publisherSigned ||
-                    (publisherCanvasRef.current &&
-                      publisherCanvasRef.current.isEmpty() &&
-                      !publisherSignatureData)
-                  }
+                  disabled={saving || (publisherSigned && !!publisherSignatureData)}
                   className={`w-full rounded px-3 py-2 text-xs text-white transition-colors flex items-center justify-center gap-2 ${
                     formData?.contractType === "CPL2" ||
                     formData?.type === "CPL2"
