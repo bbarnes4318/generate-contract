@@ -28,6 +28,7 @@ import {
   getFirestore,
   onSnapshot,
   serverTimestamp,
+  setDoc,
   updateDoc,
 } from "firebase/firestore";
 import {
@@ -3368,6 +3369,22 @@ const InsertionOrderGenerator = () => {
   const auth = firebaseObjects?.auth;
   const db = firebaseObjects?.db;
 
+  // Persistence: Update URL when docPath changes so creator can refresh and stay on contract
+  useEffect(() => {
+    if (docPath && !isSharedView) {
+      const pathParts = docPath.split("/");
+      const usersIdx = pathParts.indexOf("users");
+      const ioIdx = pathParts.indexOf("insertionOrders");
+      const uid = usersIdx !== -1 ? pathParts[usersIdx + 1] : null;
+      const cid = ioIdx !== -1 ? pathParts[ioIdx + 1] : null;
+      
+      if (uid && cid) {
+        const newUrl = `${window.location.origin}${window.location.pathname}?contractId=${cid}&uid=${uid}`;
+        window.history.replaceState({ path: newUrl }, '', newUrl);
+      }
+    }
+  }, [docPath, isSharedView]);
+
   // Effect to load shared contract from URL
   useEffect(() => {
     if (!db || !firebaseReady) return;
@@ -3376,7 +3393,7 @@ const InsertionOrderGenerator = () => {
     const cid = params.get("contractId");
     const uid = params.get("uid");
 
-    if (cid && uid) {
+    if (cid && uid && authStatus === "authed") {
       setIsSharedView(true);
       setLocalContractId(cid);
       setCreatorUid(uid);
@@ -3408,11 +3425,11 @@ const InsertionOrderGenerator = () => {
       };
       fetchContract();
     }
-  }, [db, firebaseReady]);
+  }, [db, firebaseReady, authStatus]);
 
   // Real-time listener for signature updates
   useEffect(() => {
-    if (!docPath || !db || !firebaseReady) return;
+    if (!docPath || !db || authStatus !== "authed") return;
 
     const unsubscribe = onSnapshot(doc(db, docPath), (docSnap) => {
       if (docSnap.exists()) {
@@ -3437,10 +3454,12 @@ const InsertionOrderGenerator = () => {
           setContractStatus(data.status);
         }
       }
+    }, (error) => {
+      console.error("Snapshot error:", error);
     });
 
     return () => unsubscribe();
-  }, [docPath, db, firebaseReady, buyerSignatureData, publisherSignatureData]);
+  }, [docPath, db, authStatus, buyerSignatureData, publisherSignatureData]);
 
   const handleEmailParties = async () => {
     if (!docPath) {
@@ -4069,6 +4088,10 @@ const InsertionOrderGenerator = () => {
         brokerLiabilityAcknowledged: formData.brokerLiability,
         overseasPublisherClauseIncluded: true,
         userId: user.uid,
+        signatures: {
+          buyer: buyerSignatureData || null,
+          publisher: publisherSignatureData || null,
+        },
       };
 
       setSaving(true);
@@ -4222,21 +4245,26 @@ const InsertionOrderGenerator = () => {
 
     try {
       setSaving(true);
-      const updateData = {
-        updatedAt: serverTimestamp(),
-        [`signatures.${party}`]: signatureData,
-      };
-
+      setUiError(null);
+      
       const willBeFinalized =
         (party === "buyer" && publisherSignatureData) ||
         (party === "publisher" && buyerSignatureData);
+
+      const updateData = {
+        updatedAt: serverTimestamp(),
+        signatures: {
+          [party]: signatureData
+        }
+      };
 
       if (willBeFinalized) {
         updateData.status = "finalized";
         updateData.signedAt = serverTimestamp();
       }
 
-      await updateDoc(doc(db, docPath), updateData);
+      // Use setDoc with merge to ensure signatures map exists and nested fields update correctly
+      await setDoc(doc(db, docPath), updateData, { merge: true });
 
       if (party === "buyer") {
         setBuyerSignatureData(signatureData);
@@ -4246,12 +4274,14 @@ const InsertionOrderGenerator = () => {
         setPublisherSignature("drawn");
       }
 
+      setUiSuccess(`${party.charAt(0).toUpperCase() + party.slice(1)} signature saved successfully!`);
+      
       if (willBeFinalized) {
         setContractStatus("finalized");
       }
     } catch (error) {
       console.error("Error saving signature:", error);
-      setUiError("Failed to save signature: " + error.message);
+      setUiError("Failed to save signature: " + (error.permission ? "Permission denied. Please ensure you have access to sign this document." : error.message));
     } finally {
       setSaving(false);
     }
