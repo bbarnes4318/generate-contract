@@ -3302,8 +3302,8 @@ const InsertionOrderGenerator = () => {
 
   // Shared contract loading state
   const [isSharedView, setIsSharedView] = useState(false);
-  const [creatorUid, setCreatorUid] = useState(null);
-  const [contractId, setLocalContractId] = useState(null);
+  const [_creatorUid, setCreatorUid] = useState(null);
+  const [_contractId, setLocalContractId] = useState(null);
 
   // Wizard state - must be declared before useEffects that reference them
   const [currentStep, setCurrentStep] = useState(1);
@@ -5387,7 +5387,7 @@ const LLCFormationStep = ({ formData, onFieldChange }) => {
   );
 };
 
-const CampaignDetailsStep = ({ formData, onFieldChange, onToggleArray }) => {
+const CampaignDetailsStep = ({ formData, onFieldChange, onToggleArray: _onToggleArray }) => {
   if (formData.contractType === "CPL2") {
     return (
       <div className="flex flex-col gap-3 h-full overflow-hidden p-2">
@@ -8435,10 +8435,10 @@ const FormView = ({
 const ContractView = ({
   formData,
   contractText,
-  buyerSignature,
-  publisherSignature,
-  setBuyerSignature,
-  setPublisherSignature,
+  buyerSignature: _buyerSignature,
+  publisherSignature: _publisherSignature,
+  setBuyerSignature: _setBuyerSignature,
+  setPublisherSignature: _setPublisherSignature,
   setBuyerSignatureData,
   setPublisherSignatureData,
   onReset,
@@ -8448,7 +8448,7 @@ const ContractView = ({
   onEmailParties,
   onSubmitSignature,
   isSharedView,
-  contractStatus,
+  contractStatus: _contractStatus,
   buyerSignatureData,
   publisherSignatureData,
 }) => {
