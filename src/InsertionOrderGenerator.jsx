@@ -3309,7 +3309,7 @@ const InsertionOrderGenerator = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [completedSteps, setCompletedSteps] = useState(new Set());
 
-  const RESEND_API_KEY = "re_3R8KpRr6_Dim7B3YBQ3kmEHbGPFx7FAvQ";
+
 
   // Firebase initialization - must happen before any useEffect that uses db
   useEffect(() => {
@@ -3468,14 +3468,12 @@ const InsertionOrderGenerator = () => {
       `;
 
       try {
-        const response = await fetch("https://api.resend.com/emails", {
+        const response = await fetch("/api/send-email", {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${RESEND_API_KEY}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            from: "contracts@perenroll.com",
             to: [toEmail],
             subject: `Action Required: Sign Contract - ${formData.buyer.companyName} / ${formData.publisher.companyName}`,
             html: emailHtml,
@@ -3484,7 +3482,7 @@ const InsertionOrderGenerator = () => {
 
         if (!response.ok) {
           const errData = await response.json();
-          throw new Error(errData.message || "Failed to send email via Resend");
+          throw new Error(errData.message || "Failed to send email via backend API");
         }
       } catch (err) {
         console.error(`Error sending to ${toEmail}:`, err);
@@ -3514,7 +3512,7 @@ const InsertionOrderGenerator = () => {
       setUiError(
         "Error sending emails: " +
           error.message +
-          ". Note: Browser may block Resend API due to CORS."
+          ". The backend service may be starting up, please try again in a few seconds."
       );
     } finally {
       setSaving(false);
@@ -3784,13 +3782,15 @@ const InsertionOrderGenerator = () => {
       if (!hasAttemptedCustom) {
         hasAttemptedCustom = true;
         const token = window.__initial_auth_token;
-        if (token) {
+        if (token && token.split('.').length === 3) {
           try {
             await signInWithCustomToken(auth, token);
             return;
           } catch (error) {
             console.warn("Custom token authentication failed:", error);
           }
+        } else if (token && token !== "REPLACE_WITH_CUSTOM_TOKEN_FROM_YOUR_SECURE_BACKEND") {
+          console.warn("Custom token ignored: Invalid format (JWT must have 3 segments). Found:", token);
         }
       }
 
@@ -3804,10 +3804,12 @@ const InsertionOrderGenerator = () => {
         }
       }
 
-      setAuthStatus("error");
-      setAuthError(
-        "Authentication failed. Provide `window.__initial_auth_token` or enable anonymous access."
-      );
+      if (!user) {
+        setAuthStatus("error");
+        setAuthError(
+          "Authentication failed. Please check your internet connection or Firebase configuration."
+        );
+      }
     });
 
     return () => unsubscribe();
@@ -5387,7 +5389,7 @@ const LLCFormationStep = ({ formData, onFieldChange }) => {
   );
 };
 
-const CampaignDetailsStep = ({ formData, onFieldChange, onToggleArray: _onToggleArray }) => {
+const CampaignDetailsStep = ({ formData, onFieldChange }) => {
   if (formData.contractType === "CPL2") {
     return (
       <div className="flex flex-col gap-3 h-full overflow-hidden p-2">
@@ -8435,10 +8437,6 @@ const FormView = ({
 const ContractView = ({
   formData,
   contractText,
-  buyerSignature: _buyerSignature,
-  publisherSignature: _publisherSignature,
-  setBuyerSignature: _setBuyerSignature,
-  setPublisherSignature: _setPublisherSignature,
   setBuyerSignatureData,
   setPublisherSignatureData,
   onReset,
@@ -8448,7 +8446,6 @@ const ContractView = ({
   onEmailParties,
   onSubmitSignature,
   isSharedView,
-  contractStatus: _contractStatus,
   buyerSignatureData,
   publisherSignatureData,
 }) => {
