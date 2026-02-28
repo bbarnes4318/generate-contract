@@ -1,4 +1,4 @@
-﻿import React, {
+import React, {
   useEffect,
   useRef,
   useState,
@@ -11,7 +11,6 @@ import {
   CheckCircle2,
   FileText,
   Loader2,
-  Mail,
   PenSquare,
   RefreshCw,
   Send,
@@ -26,8 +25,8 @@ import {
   doc,
   getDoc,
   getFirestore,
-  onSnapshot,
   serverTimestamp,
+  setDoc,
   updateDoc,
 } from "firebase/firestore";
 import {
@@ -72,8 +71,8 @@ const BILLING_CYCLES = [
   "Paid in Advance",
   "Daily",
   "Weekly",
-  "Weekly Net 7",
-  "Weekly Net 14",
+  "Net 7",
+  "Net 14",
   "Net 30",
   "As paid by Carrier",
 ];
@@ -85,22 +84,7 @@ const CHARGEBACK_LIABILITY_OPTIONS = [
   "9 months",
 ];
 
-const CHARGEBACK_REPLACEMENT_OPTIONS = [
-  "1",
-  "2",
-  "3",
-  "4",
-  "5",
-  "6",
-  "7",
-  "8",
-  "9",
-  "10",
-  "11",
-  "12",
-];
-
-const BUFFER_TIMES = ["15", "60", "90", "120", "180", "240"];
+const BUFFER_TIMES = ["60", "90", "120", "180", "240"];
 
 const VERTICALS = [
   "Medicare",
@@ -115,6 +99,12 @@ const CAMPAIGN_TYPES = [
   "ACA Health",
   "Employment Contract",
   "Auto Insurance LLC Operating Agreement",
+];
+
+const ACA_SUB_TYPES = [
+  { value: "Partnership", label: "ACA Partnership", description: "NPN Override + Per Policy + Agent Bonus residual structure" },
+  { value: "CPL", label: "ACA CPL (Cost Per Lead/Call)", description: "Payout per qualified call exceeding duration threshold" },
+  { value: "CPA", label: "ACA CPA (Cost Per Acquisition)", description: "Payout per qualified enrollment/policy sale" },
 ];
 
 const PROOF_OF_CONSENT_OPTIONS = ["Jornaya", "Trusted Form", "None"];
@@ -366,9 +356,18 @@ const INITIAL_FORM_STATE = {
   datapassFields: [],
   exportToSheets: false,
   // ACA Health specific fields
+  acaSubType: "Partnership", // Partnership, CPL, or CPA
   acaNpnOverride: "",
   acaPerPolicy: "",
   acaAgentBonus: "",
+  acaBillingCycle: "As paid by Carrier",
+  acaChargebackLiability: CHARGEBACK_LIABILITY_OPTIONS[0],
+  acaDuration: "12",
+  // ACA CPL specific
+  acaCplPayout: "",
+  acaCplBufferTime: BUFFER_TIMES[0],
+  // ACA CPA specific
+  acaCpaPayout: "",
   // Employment Contract specific fields
   jobTitle: JOB_TITLES[0],
   jobTitleOther: "",
@@ -447,10 +446,6 @@ const INITIAL_FORM_STATE = {
   llcInvestorReturnTimeline: "",
   llcExitStrategy: "",
   llcLiquidationPreference: "",
-  // FE Closing specific fields
-  feClosingFrontendCommission: "",
-  feClosingBackendCommission: "",
-  feClosingChargebackReplacement: "3", // Default to 3 months
   buyer: { ...INITIAL_PARTY_STATE },
   publisher: { ...INITIAL_PARTY_STATE },
 };
@@ -470,8 +465,8 @@ const GLOBAL_STYLE_BLOCK = `
   }
 
   input:focus, select:focus, textarea:focus {
-    border-color: #24bd68 !important;
-    --tw-ring-color: #86efac !important;
+    border-color: #2EAC6D !important;
+    --tw-ring-color: #5BC894 !important;
   }
 
   .app-shell {
@@ -486,7 +481,7 @@ const GLOBAL_STYLE_BLOCK = `
     color: #1a1a1a;
     max-width: 8.5in;
     margin: 0 auto;
-    padding: 0.5in 1in;
+    padding: 0.4in 0.75in;
     background: white;
     box-shadow: 0 4px 25px rgba(0,0,0,0.08);
     border-radius: 12px;
@@ -498,18 +493,18 @@ const GLOBAL_STYLE_BLOCK = `
   .contract-body h1, .contract-body h2, .contract-body h3 {
     font-weight: 700 !important;
     color: #263149 !important;
-    margin: 1rem 0 0.5rem 0 !important;
+    margin: 0.6rem 0 0.3rem 0 !important;
     text-transform: uppercase !important;
     letter-spacing: 0.8px !important;
     font-family: "Inter", sans-serif !important;
   }
 
   .contract-body h1 {
-    font-size: 16pt !important;
-    border-bottom: 3px solid #24bd68 !important;
+    font-size: 13pt !important;
+    border-bottom: 2px solid #2EAC6D !important;
     padding-bottom: 0.25rem !important;
-    margin-bottom: 0.75rem !important;
-    margin-top: 0 !important;
+    margin-bottom: 0.4rem !important;
+    margin-top: 0.5rem !important;
     text-align: left !important;
     font-family: "Inter", sans-serif !important;
     font-weight: 700 !important;
@@ -519,11 +514,11 @@ const GLOBAL_STYLE_BLOCK = `
   }
 
   .contract-body h2 {
-    font-size: 14pt !important;
-    margin-top: 1rem !important;
-    margin-bottom: 0.5rem !important;
-    border-left: 4px solid #24bd68 !important;
-    padding-left: 1rem !important;
+    font-size: 12pt !important;
+    margin-top: 0.5rem !important;
+    margin-bottom: 0.3rem !important;
+    border-left: 3px solid #2EAC6D !important;
+    padding-left: 0.75rem !important;
     font-family: "Inter", sans-serif !important;
     font-weight: 700 !important;
     color: #263149 !important;
@@ -532,9 +527,9 @@ const GLOBAL_STYLE_BLOCK = `
   }
 
   .contract-body h3 {
-    font-size: 12pt !important;
-    margin-top: 0.75rem !important;
-    margin-bottom: 0.25rem !important;
+    font-size: 11pt !important;
+    margin-top: 0.4rem !important;
+    margin-bottom: 0.2rem !important;
     color: #374151 !important;
     font-family: "Inter", sans-serif !important;
     font-weight: 700 !important;
@@ -543,9 +538,11 @@ const GLOBAL_STYLE_BLOCK = `
   }
 
   .contract-body p {
-    margin-bottom: 0.5rem !important;
-    text-indent: 0.5in !important;
-    line-height: 1.5 !important;
+    margin-top: 0 !important;
+    margin-bottom: 0.35rem !important;
+    text-align: justify !important;
+    text-indent: 0.35in !important;
+    line-height: 1.45 !important;
   }
 
   .contract-body strong {
@@ -564,21 +561,21 @@ const GLOBAL_STYLE_BLOCK = `
   .contract-body .separator {
     text-align: center;
     color: #6b7280;
-    margin: 0.75rem 0;
+    margin: 0.5rem 0;
     font-size: 10pt;
     font-weight: 300;
     letter-spacing: 1px;
-    border-top: 2px solid #e5e7eb;
-    padding-top: 1rem;
+    border-top: 1px solid #e5e7eb;
+    padding-top: 0.35rem;
     width: 100%;
     overflow: hidden;
   }
 
   .contract-header {
     text-align: center;
-    border-bottom: 3px solid #24bd68;
-    padding-bottom: 0.25rem;
-    margin-bottom: 0.25rem;
+    border-bottom: 2px solid #2EAC6D;
+    padding-bottom: 0.5rem;
+    margin-bottom: 0.15rem;
     margin-top: 0;
   }
 
@@ -615,19 +612,19 @@ const GLOBAL_STYLE_BLOCK = `
 
   .contract-body .party-section {
     background: #f8fafc;
-    padding: 0.75rem;
-    border-radius: 8px;
-    margin: 0.75rem 0;
-    border-left: 4px solid #24bd68;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    margin: 0.35rem 0;
+    border-left: 3px solid #2EAC6D;
     width: 100%;
     overflow: hidden;
     box-sizing: border-box;
   }
 
   .contract-body .party-section p {
-    margin-bottom: 0.5rem !important;
+    margin-bottom: 0.15rem !important;
     text-indent: 0 !important;
-    line-height: 1.4 !important;
+    line-height: 1.35 !important;
     white-space: normal !important;
     word-wrap: break-word !important;
     overflow-wrap: break-word !important;
@@ -639,7 +636,7 @@ const GLOBAL_STYLE_BLOCK = `
   }
 
   .contract-body ul, .contract-body ol {
-    margin: 0.75rem 0;
+    margin: 0.25rem 0;
     padding-left: 1.5rem;
   }
 
@@ -654,14 +651,14 @@ const GLOBAL_STYLE_BLOCK = `
   }
 
   .contract-body .signature-section {
-    margin-top: 2rem;
-    padding: 1.5rem;
-    border-top: 3px solid #24bd68;
+    margin-top: 1rem;
+    padding: 1rem;
+    border-top: 2px solid #2EAC6D;
     background: #f8fafc;
-    border-radius: 8px;
-    margin-left: -1rem;
-    margin-right: -1rem;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border-radius: 6px;
+    margin-left: -0.5rem;
+    margin-right: -0.5rem;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
   }
 
   .contract-body .signature-line {
@@ -672,8 +669,8 @@ const GLOBAL_STYLE_BLOCK = `
   }
 
   .contract-body .signature-block {
-    margin: 1.5rem 0;
-    padding: 1.25rem;
+    margin: 0.75rem 0;
+    padding: 0.75rem;
     background: white;
     border-radius: 6px;
     border: 1px solid #e5e7eb;
@@ -696,23 +693,23 @@ const GLOBAL_STYLE_BLOCK = `
   }
 
   .contract-body .exhibit-content {
-    margin-top: 1.5rem;
+    margin-top: 0.5rem;
   }
 
   .contract-body .requirements-list {
-    margin: 1rem 0;
-    padding-left: 1rem;
-    border-left: 3px solid #24bd68;
+    margin: 0.35rem 0;
+    padding-left: 0.75rem;
+    border-left: 2px solid #2EAC6D;
     background: #f8fafc;
-    padding: 1rem;
+    padding: 0.5rem 0.75rem;
     border-radius: 4px;
   }
 
   .contract-body .exhibit-section {
     background: #ffffff;
-    padding: 1rem;
+    padding: 0.5rem 0.75rem;
     border: 1px solid #e5e7eb;
-    margin: 1rem 0;
+    margin: 0.5rem 0;
     border-radius: 4px;
     box-shadow: none;
     width: 100%;
@@ -732,34 +729,34 @@ const GLOBAL_STYLE_BLOCK = `
   }
 
   .contract-body .payment-structure {
-    background: #f0fdf4;
-    padding: 1rem;
-    border-radius: 8px;
-    border: 1px solid #86efac;
-    margin: 1rem 0;
+    background: #F0FAF5;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    border: 1px solid #5BC894;
+    margin: 0.5rem 0;
   }
 
   .contract-body .separator {
     text-align: center;
     color: #6b7280;
-    margin: 1.5rem 0;
+    margin: 0.5rem 0;
     font-size: 10pt;
     font-weight: 300;
     letter-spacing: 1px;
-    border-top: 2px solid #e5e7eb;
-    padding-top: 1rem;
+    border-top: 1px solid #e5e7eb;
+    padding-top: 0.35rem;
     width: 100%;
     overflow: hidden;
   }
 
   .contract-body .recitals {
     font-style: italic;
-    margin: 1.5rem 0;
+    margin: 0.5rem 0;
   }
 
   .contract-body .recitals p {
     text-indent: 0;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.2rem;
   }
 
   .print-only {
@@ -855,9 +852,9 @@ const GLOBAL_STYLE_BLOCK = `
       max-height: none !important;
       overflow: visible !important;
       white-space: normal !important;
-      font-size: 11pt !important;
-      line-height: 1.6 !important;
-      padding: 0.75in !important;
+      font-size: 10pt !important;
+      line-height: 1.4 !important;
+      padding: 0.5in !important;
       background: transparent !important;
       border: none !important;
       border-radius: 0 !important;
@@ -940,22 +937,6 @@ const GLOBAL_STYLE_BLOCK = `
       display: block !important;
     }
   }
-
-  /* PDF Page Break Fixes */
-  .contract-body h1, 
-  .contract-body h2, 
-  .contract-body .party-section, 
-  .contract-body .signature-block, 
-  .contract-body .exhibit-section,
-  .contract-body .payment-structure {
-    page-break-inside: avoid !important;
-    break-inside: avoid !important;
-  }
-
-  .contract-body .separator {
-    page-break-after: avoid !important;
-    break-after: avoid !important;
-  }
 `;
 
 const ensureValue = (value, fallback = "Not Provided") => {
@@ -988,7 +969,7 @@ const joinList = (items, emptyLabel = "None specified") => {
 const deriveGoverningLaw = (buyerAddress, publisherAddress) => {
   const combined = `${buyerAddress || ""} ${publisherAddress || ""}`;
   const stateMatch = combined.match(
-    /\b(A[KLZR]|C[AOT]|DE|FL|GA|HI|I[ADLN]|K[SY]|LA|M[ADEHINOPST]|N[CDEHJMVY]|O[HKR]|P[ARW]|RI|S[CD]|T[NX]|UT|V[AIT]|W[AIVY])\b/
+    /\b(A[KLZR]|C[AOT]|DE|FL|GA|HI|I[ADLN]|K[SY]|LA|M[ADEHINOPST]|N[CDEHJMVY]|O[HKR]|P[ARW]|RI|S[CD]|T[NX]|UT|V[AIT]|W[AIVY])\b/,
   );
   if (stateMatch) {
     return `the State of ${stateMatch[0]}`;
@@ -999,7 +980,7 @@ const deriveGoverningLaw = (buyerAddress, publisherAddress) => {
 const buildContractTemplate = (
   formData,
   buyerSignatureData = null,
-  publisherSignatureData = null
+  publisherSignatureData = null,
 ) => {
   const effectiveDate = new Date().toLocaleDateString("en-US", {
     month: "long",
@@ -1009,7 +990,7 @@ const buildContractTemplate = (
 
   const governingLaw = deriveGoverningLaw(
     formData?.buyer?.address,
-    formData?.publisher?.address
+    formData?.publisher?.address,
   );
 
   const brokerLiabilityClause = formData?.brokerLiability
@@ -1020,16 +1001,82 @@ const buildContractTemplate = (
     formData?.datapass === "Yes"
       ? `Publisher will transmit the datapass payload in real time to the endpoint designated by Buyer (currently ${ensureValue(
           formData.datapassPostUrl,
-          "Not Provided"
+          "Not Provided",
         )}). Buyer warrants that its systems are hardened, secured, and compliant with all data privacy requirements. Buyer shall acknowledge receipt of each lead within two minutes. Required datapass fields: ${joinList(
           formData?.datapassFields,
-          "No additional datapass fields selected"
+          "No additional datapass fields selected",
         )}`
       : "No datapass payload will be transmitted under this Agreement. Should Buyer later request datapass enablement, the parties must execute a written addendum setting forth security, retention, and processing requirements.";
 
   const acaHealthClause =
     formData?.type === "ACA Health"
-      ? `
+      ? formData?.acaSubType === "CPL"
+        ? `
+
+<h1>5.6 ACA HEALTH CPL CALL REQUIREMENTS</h1>
+
+<p><span class="section-number">5.6.1</span> A "Qualified Call" means a live inbound telephone call from a verified consumer actively seeking ACA health insurance information or enrollment assistance, where the call duration meets or exceeds the Buffer Time threshold of ${ensureValue(formData?.acaCplBufferTime)} seconds.</p>
+
+<p><span class="section-number">5.6.2</span> Calls must originate from consumers who have expressed genuine interest in ACA health insurance products and have provided verifiable contact information.</p>
+
+<h1>5.7 PAYMENT TERMS</h1>
+
+<p><span class="section-number">5.7.1</span> Payout per Qualified Call: Buyer shall pay Publisher ${formatCurrency(formData?.acaCplPayout || "Not Provided")} for each Qualified Call that meets or exceeds the ${ensureValue(formData?.acaCplBufferTime)}-second duration threshold.</p>
+
+<p><span class="section-number">5.7.2</span> Calls that do not meet the minimum duration threshold shall not be billable and no payment shall be owed.</p>
+
+<p><span class="section-number">5.7.3</span> <strong>NO REFUNDS POLICY:</strong> Buyer acknowledges and agrees that once payment has been made for any Qualified Call, no refunds will be provided under any circumstances. This no-refund policy is final and non-negotiable.</p>
+
+<p><span class="section-number">5.7.4</span> <strong>CREDIT POLICY:</strong> Publisher may, in its sole discretion, choose to provide credits for specific calls on a case-by-case basis. Credits are a courtesy, not an obligation.</p>
+
+<h1>5.8 CALL QUALITY AND COMPLIANCE</h1>
+
+<p><span class="section-number">5.8.1</span> All calls must comply with CMS Medicare Communications and Marketing Guidelines as applicable to ACA health insurance products.</p>
+
+<p><span class="section-number">5.8.2</span> Publisher shall maintain call recordings for a minimum of five (5) years for compliance and audit purposes.</p>
+
+<p><span class="section-number">5.8.3</span> Publisher shall ensure all marketing and advertising materials comply with applicable state and federal insurance regulations.</p>
+
+<h1>5.9 BUYER OBLIGATIONS</h1>
+
+<p><span class="section-number">5.9.1</span> Buyer shall maintain adequate staffing and systems to handle the volume of Qualified Calls delivered.</p>
+
+<p><span class="section-number">5.9.2</span> Buyer shall provide properly licensed and trained insurance agents to handle ACA health insurance inquiries and enrollments.</p>
+
+<p><span class="section-number">5.9.3</span> Buyer shall submit call disputes within seventy-two (72) hours of call receipt. Failure to timely dispute constitutes acceptance of the call as Qualified.</p>`
+        : formData?.acaSubType === "CPA"
+          ? `
+
+<h1>5.6 ACA HEALTH CPA ENROLLMENT REQUIREMENTS</h1>
+
+<p><span class="section-number">5.6.1</span> A "Qualified Enrollment" means a completed ACA health insurance application that results in an active policy issued by a participating carrier, where the enrollee has been verified as eligible and has completed all required documentation.</p>
+
+<p><span class="section-number">5.6.2</span> Publisher shall ensure all enrollments are compliant with CMS guidelines, state regulations, and carrier requirements.</p>
+
+<h1>5.7 PAYMENT TERMS</h1>
+
+<p><span class="section-number">5.7.1</span> Payout per Qualified Enrollment: Buyer shall pay Publisher ${formatCurrency(formData?.acaCpaPayout || "Not Provided")} for each Qualified Enrollment resulting in an active, paid policy.</p>
+
+<p><span class="section-number">5.7.2</span> Payment is contingent upon the policy being issued and the first premium being paid by the enrollee. No payment shall be owed for applications that are not approved, cancelled before issuance, or where the first premium is not paid.</p>
+
+<p><span class="section-number">5.7.3</span> <strong>REPLACEMENT POLICY:</strong> Publisher will replace enrollments where the insured does not pay their first premium. Publisher agrees to provide replacement enrollments at no additional cost to Buyer when a CPA conversion is charged but the insured fails to remit payment for their first premium.</p>
+
+<h1>5.8 ENROLLMENT QUALITY AND COMPLIANCE</h1>
+
+<p><span class="section-number">5.8.1</span> All enrollments must comply with CMS regulations, state insurance regulations, and carrier underwriting guidelines.</p>
+
+<p><span class="section-number">5.8.2</span> Publisher shall maintain detailed records of all enrollment activities, including consumer consent documentation, for a minimum of five (5) years.</p>
+
+<p><span class="section-number">5.8.3</span> Publisher shall ensure all agents involved in the enrollment process maintain active and valid insurance licenses in the applicable states.</p>
+
+<h1>5.9 BUYER OBLIGATIONS</h1>
+
+<p><span class="section-number">5.9.1</span> Buyer shall provide carrier access, training materials, and administrative support to facilitate the enrollment process.</p>
+
+<p><span class="section-number">5.9.2</span> Buyer shall process and submit applications to carriers in a timely manner.</p>
+
+<p><span class="section-number">5.9.3</span> Buyer shall provide monthly reports showing all enrollments, active policies, and payment calculations.</p>`
+          : `
 
 <h1>5.6 AGENT RECRUITMENT SERVICES</h1>
 
@@ -1040,16 +1087,16 @@ const buildContractTemplate = (
 <h1>5.7 PAYMENT STRUCTURE AND TERMS</h1>
 
 <p><span class="section-number">5.7.1</span> NPN Override Payments: Recruiter shall receive ${formatCurrency(
-          formData?.acaNpnOverride || "Not Provided"
-        )} per month for each Active Policy sold under recruited agents' NPN numbers. This payment continues monthly for as long as the customer maintains their policy and the policy remains in force with the carrier.</p>
+            formData?.acaNpnOverride || "Not Provided",
+          )} per month for each Active Policy sold under recruited agents' NPN numbers. This payment continues monthly for as long as the customer maintains their policy and the policy remains in force with the carrier.</p>
 
 <p><span class="section-number">5.7.2</span> Per Policy Payments: Recruiter shall receive ${formatCurrency(
-          formData?.acaPerPolicy || "Not Provided"
-        )} for each ACA policy sale completed by recruited agents, paid weekly (one week after the sale is completed and confirmed by the carrier).</p>
+            formData?.acaPerPolicy || "Not Provided",
+          )} for each ACA policy sale completed by recruited agents, paid weekly (one week after the sale is completed and confirmed by the carrier).</p>
 
 <p><span class="section-number">5.7.3</span> Agent Bonus Payments: Recruiter shall receive an additional ${formatCurrency(
-          formData?.acaAgentBonus || "Not Provided"
-        )} per month for each Active Policy sold by recruited agents, paid monthly with the same residual structure as NPN Override payments.</p>
+            formData?.acaAgentBonus || "Not Provided",
+          )} per month for each Active Policy sold by recruited agents, paid monthly with the same residual structure as NPN Override payments.</p>
 
 <p><span class="section-number">5.7.4</span> Payment Timing: Sales completed before December 8th of each year will count toward January residual payments. Sales completed on or after December 8th will count toward February residual payments.</p>
 
@@ -1090,7 +1137,11 @@ const buildContractTemplate = (
   const getContractTitle = () => {
     switch (formData?.type) {
       case "ACA Health":
-        return "ACA INSURANCE AGENCY RECRUITMENT AGREEMENT";
+        return formData?.acaSubType === "CPL"
+          ? "ACA HEALTH INSURANCE CPL AGREEMENT"
+          : formData?.acaSubType === "CPA"
+            ? "ACA HEALTH INSURANCE CPA AGREEMENT"
+            : "ACA INSURANCE AGENCY RECRUITMENT AGREEMENT";
       case "Employment Contract":
         return "EMPLOYMENT AGREEMENT";
       case "Auto Insurance LLC Operating Agreement":
@@ -1103,7 +1154,9 @@ const buildContractTemplate = (
   const getPartyLabels = () => {
     switch (formData?.type) {
       case "ACA Health":
-        return { buyer: "ACA Insurance Agency", publisher: "Agent Recruiter" };
+        return formData?.acaSubType === "CPL" || formData?.acaSubType === "CPA"
+          ? { buyer: "Buyer", publisher: "Publisher" }
+          : { buyer: "ACA Insurance Agency", publisher: "Agent Recruiter" };
       case "Employment Contract":
         return { buyer: "Employer", publisher: "Employee" };
       case "Auto Insurance LLC Operating Agreement":
@@ -1128,7 +1181,7 @@ const buildContractTemplate = (
   color: #1a1a1a;
   max-width: 8.5in;
   margin: 0 auto;
-  padding: 0.5in 1in;
+  padding: 0.4in 0.75in;
   background: white;
   box-shadow: 0 4px 25px rgba(0,0,0,0.08);
   border-radius: 12px;
@@ -1139,9 +1192,9 @@ const buildContractTemplate = (
 
 .contract-header {
   text-align: center;
-  border-bottom: 3px solid #24bd68;
-  padding-bottom: 0.25rem;
-  margin-bottom: 0.25rem;
+  border-bottom: 2px solid #2EAC6D;
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.15rem;
   margin-top: 0;
 }
 
@@ -1153,9 +1206,9 @@ const buildContractTemplate = (
 }
 
 .contract-header h1 {
-  font-size: 16pt;
+  font-size: 14pt;
   font-weight: 700;
-  margin: 0 0 0.5rem 0;
+  margin: 0 0 0.25rem 0;
   color: #263149;
   text-transform: uppercase;
   letter-spacing: 0.8px;
@@ -1172,39 +1225,39 @@ const buildContractTemplate = (
 .separator {
   text-align: center;
   color: #6b7280;
-  margin: 1rem 0;
+  margin: 0.5rem 0;
   font-size: 10pt;
   font-weight: 300;
   letter-spacing: 1px;
-  border-top: 2px solid #e5e7eb;
-  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 0.35rem;
   width: 100%;
   overflow: hidden;
 }
 
 .section {
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.75rem;
 }
 
 .section h1 {
-  font-size: 16pt;
+  font-size: 13pt;
   font-weight: 700;
-  margin: 1rem 0 0.5rem 0;
+  margin: 0.5rem 0 0.3rem 0;
   color: #263149;
-  border-bottom: 3px solid #24bd68;
-  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #2EAC6D;
+  padding-bottom: 0.25rem;
   text-transform: uppercase;
   letter-spacing: 0.8px;
   font-family: "Inter", sans-serif;
 }
 
 .section h2 {
-  font-size: 14pt;
+  font-size: 12pt;
   font-weight: 700;
-  margin-top: 1rem;
-  margin-bottom: 0.5rem;
-  border-left: 4px solid #24bd68;
-  padding-left: 1rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.3rem;
+  border-left: 3px solid #2EAC6D;
+  padding-left: 0.75rem;
   color: #263149;
   text-transform: uppercase;
   letter-spacing: 0.8px;
@@ -1212,12 +1265,12 @@ const buildContractTemplate = (
 }
 
 .section p {
-  margin: 0.5rem 0;
+  margin: 0.25rem 0;
   text-align: justify;
 }
 
 .section ul, .section ol {
-  margin: 0.5rem 0;
+  margin: 0.25rem 0;
   padding-left: 1.5rem;
 }
 
@@ -1295,7 +1348,7 @@ const buildContractTemplate = (
 
 .definition-box {
   background-color: #f8fafc;
-  border-left: 4px solid #24bd68;
+  border-left: 4px solid #2EAC6D;
   padding: 1rem;
   margin: 1rem 0;
   border-radius: 8px;
@@ -1320,7 +1373,7 @@ const buildContractTemplate = (
 }
 
 .signature-section {
-  margin-top: 3rem;
+  margin-top: 1.5rem;
   page-break-inside: avoid;
 }
 
@@ -1332,12 +1385,12 @@ const buildContractTemplate = (
 }
 
 .notary-section {
-  margin-top: 2rem;
+  margin-top: 1rem;
   border: 1px solid #e5e7eb;
-  border-left: 4px solid #24bd68;
-  padding: 1rem;
+  border-left: 3px solid #2EAC6D;
+  padding: 0.75rem;
   background-color: #f8fafc;
-  border-radius: 8px;
+  border-radius: 6px;
 }
 
 .notary-section h3 {
@@ -1360,9 +1413,9 @@ const buildContractTemplate = (
 <div class="contract-header">
 <img src="${
       typeof window !== "undefined"
-        ? window.location.origin + "/perenroll.png"
-        : "/perenroll.png"
-    }" alt="Perenroll Logo" class="contract-logo" onerror="this.style.display='none'" />
+        ? window.location.origin + "/pvnvoice.png"
+        : "/pvnvoice.png"
+    }" alt="PVNVoice Logo" class="contract-logo" onerror="this.style.display='none'" />
 <h1>LIMITED LIABILITY COMPANY OPERATING AGREEMENT</h1>
 <p class="contract-subtitle">${ensureValue(formData?.llcCompanyName)} LLC</p>
 <p class="contract-subtitle">Effective Date: ${effectiveDate}</p>
@@ -1394,11 +1447,11 @@ const buildContractTemplate = (
 
 <h2>1.1 Formation</h2>
 <p>${ensureValue(
-      formData?.llcCompanyName
+      formData?.llcCompanyName,
     )}, LLC (the "Company") is a limited liability company formed under the laws of ${ensureValue(
-      formData?.llcState
+      formData?.llcState,
     )} on ${ensureValue(
-      formData?.llcFormationDate
+      formData?.llcFormationDate,
     )} for the purpose of operating as a licensed auto insurance agency.</p>
 
 <h2>1.2 Principal Business</h2>
@@ -1412,7 +1465,7 @@ const buildContractTemplate = (
 
 <h2>1.3 Registered Office</h2>
 <p>The Company's registered office is located at ${ensureValue(
-      formData?.llcRegisteredAddress
+      formData?.llcRegisteredAddress,
     )}.</p>
 
 <h2>1.4 Term</h2>
@@ -1463,13 +1516,13 @@ const buildContractTemplate = (
 <h2>2.2 Additional Capital Requirements</h2>
 <ul>
 <li><strong>Working Capital Facility:</strong> ${ensureValue(
-      formData?.llcInvestorName
+      formData?.llcInvestorName,
     )} agrees to provide working capital funding up to $${ensureValue(
-      formData?.llcMaxWorkingCapital
+      formData?.llcMaxWorkingCapital,
     )} to cover operating expenses until the Company achieves profitability</li>
 <li><strong>Capital Call Procedures:</strong> Additional capital contributions may be required by majority vote of Members</li>
 <li><strong>Priority Recovery:</strong> ${ensureValue(
-      formData?.llcInvestorName
+      formData?.llcInvestorName,
     )} shall have priority in recovering working capital advances before profit distributions</li>
 </ul>
 
@@ -1478,51 +1531,51 @@ const buildContractTemplate = (
 
 <h2>2.4 Monthly Operating Cost Structure</h2>
 <p>The Company's estimated monthly operating costs to be covered by ${ensureValue(
-      formData?.llcInvestorName
+      formData?.llcInvestorName,
     )}'s working capital facility:</p>
 <ul>
 <li><strong>Rent and Facilities:</strong> $${ensureValue(
-      formData?.llcMonthlyRent
+      formData?.llcMonthlyRent,
     )} per month</li>
 <li><strong>Utilities:</strong> $${ensureValue(
-      formData?.llcMonthlyUtilities
+      formData?.llcMonthlyUtilities,
     )} per month</li>
 <li><strong>Insurance:</strong> $${ensureValue(
-      formData?.llcMonthlyInsurance
+      formData?.llcMonthlyInsurance,
     )} per month</li>
 <li><strong>Software and Technology:</strong> $${ensureValue(
-      formData?.llcMonthlySoftware
+      formData?.llcMonthlySoftware,
     )} per month</li>
 <li><strong>Marketing and Advertising:</strong> $${ensureValue(
-      formData?.llcMonthlyMarketing
+      formData?.llcMonthlyMarketing,
     )} per month</li>
 <li><strong>Salaries and Benefits:</strong> $${ensureValue(
-      formData?.llcMonthlySalaries
+      formData?.llcMonthlySalaries,
     )} per month</li>
 <li><strong>Other Operating Expenses:</strong> $${ensureValue(
-      formData?.llcMonthlyOther
+      formData?.llcMonthlyOther,
     )} per month</li>
 <li><strong>Total Monthly Operating Costs:</strong> $${ensureValue(
-      formData?.llcTotalMonthlyCosts
+      formData?.llcTotalMonthlyCosts,
     )} per month</li>
 </ul>
 
 <h2>2.5 Financial Projections and Break-Even Analysis</h2>
 <ul>
 <li><strong>Expected Monthly Revenue:</strong> $${ensureValue(
-      formData?.llcExpectedMonthlyRevenue
+      formData?.llcExpectedMonthlyRevenue,
     )}</li>
 <li><strong>Projected Break-Even Timeline:</strong> ${ensureValue(
-      formData?.llcBreakEvenMonths
+      formData?.llcBreakEvenMonths,
     )} months from commencement</li>
 <li><strong>Investor Return Timeline:</strong> ${ensureValue(
-      formData?.llcInvestorReturnTimeline
+      formData?.llcInvestorReturnTimeline,
     )} months from commencement</li>
 <li><strong>Exit Strategy:</strong> ${ensureValue(
-      formData?.llcExitStrategy
+      formData?.llcExitStrategy,
     )}</li>
 <li><strong>Liquidation Preference:</strong> ${ensureValue(
-      formData?.llcLiquidationPreference
+      formData?.llcLiquidationPreference,
     )}</li>
 </ul>
 
@@ -1534,13 +1587,13 @@ const buildContractTemplate = (
 <p>The Company shall have the following membership interests:</p>
 <ul>
 <li><strong>${ensureValue(formData?.llcInvestorName)}:</strong> ${ensureValue(
-      formData?.llcInvestorOwnership
+      formData?.llcInvestorOwnership,
     )} (Managing Member/Investor)</li>
 <li><strong>${ensureValue(formData?.llcMember1Name)}:</strong> ${ensureValue(
-      formData?.llcMember1Ownership
+      formData?.llcMember1Ownership,
     )} (Operating Member)</li>
 <li><strong>${ensureValue(formData?.llcMember2Name)}:</strong> ${ensureValue(
-      formData?.llcMember2Ownership
+      formData?.llcMember2Ownership,
     )} (Operating Member)</li>
 </ul>
 
@@ -1554,10 +1607,10 @@ const buildContractTemplate = (
 <h2>3.3 Management Structure</h2>
 <ul>
 <li><strong>Managing Member:</strong> ${ensureValue(
-      formData?.llcInvestorName
+      formData?.llcInvestorName,
     )} (45% voting power)</li>
 <li><strong>Operating Members:</strong> ${ensureValue(
-      formData?.llcMember1Name
+      formData?.llcMember1Name,
     )} and ${ensureValue(formData?.llcMember2Name)} (27.5% each)</li>
 </ul>
 
@@ -1577,13 +1630,13 @@ const buildContractTemplate = (
 <ul>
 <li><strong>Strategic Decisions:</strong> Board approval required</li>
 <li><strong>Operational Decisions:</strong> COO authority up to $${ensureValue(
-      formData?.llcOperationalLimit
+      formData?.llcOperationalLimit,
     )}</li>
 <li><strong>Marketing Decisions:</strong> CMO authority up to $${ensureValue(
-      formData?.llcMarketingLimit
+      formData?.llcMarketingLimit,
     )}</li>
 <li><strong>Financial Decisions:</strong> Chairman approval required for amounts over $${ensureValue(
-      formData?.llcFinancialLimit
+      formData?.llcFinancialLimit,
     )}</li>
 </ul>
 
@@ -1600,9 +1653,9 @@ const buildContractTemplate = (
 <h1>5. OPERATIONAL RESPONSIBILITIES</h1>
 
 <h2>5.1 ${ensureValue(
-      formData?.llcMember1Name
+      formData?.llcMember1Name,
     )} - Chief Operating Officer (${ensureValue(
-      formData?.llcMember1Ownership
+      formData?.llcMember1Ownership,
     )})</h2>
 <p><strong>Primary Responsibilities:</strong></p>
 <ul>
@@ -1617,20 +1670,20 @@ const buildContractTemplate = (
 <p><strong>Performance Metrics:</strong></p>
 <ul>
 <li>Maintain relationships with minimum ${ensureValue(
-      formData?.llcMinCarriers
+      formData?.llcMinCarriers,
     )} carriers</li>
 <li>Achieve agent retention rate of ${ensureValue(
-      formData?.llcAgentRetention
+      formData?.llcAgentRetention,
     )}%</li>
 <li>Meet quarterly sales targets of $${ensureValue(
-      formData?.llcQuarterlyTargets
+      formData?.llcQuarterlyTargets,
     )}</li>
 </ul>
 
 <h2>5.2 ${ensureValue(
-      formData?.llcMember2Name
+      formData?.llcMember2Name,
     )} - Chief Marketing Officer (${ensureValue(
-      formData?.llcMember2Ownership
+      formData?.llcMember2Ownership,
     )})</h2>
 <p><strong>Primary Responsibilities:</strong></p>
 <ul>
@@ -1645,18 +1698,18 @@ const buildContractTemplate = (
 <p><strong>Performance Metrics:</strong></p>
 <ul>
 <li>Generate minimum ${ensureValue(
-      formData?.llcMinLeads
+      formData?.llcMinLeads,
     )} qualified leads per month</li>
 <li>Maintain lead conversion rate of ${ensureValue(
-      formData?.llcConversionRate
+      formData?.llcConversionRate,
     )}%</li>
 <li>Achieve cost per acquisition under $${ensureValue(formData?.llcMaxCPA)}</li>
 </ul>
 
 <h2>5.3 ${ensureValue(
-      formData?.llcInvestorName
+      formData?.llcInvestorName,
     )} - Managing Member/Investor (${ensureValue(
-      formData?.llcInvestorOwnership
+      formData?.llcInvestorOwnership,
     )})</h2>
 <p><strong>Primary Responsibilities:</strong></p>
 <ul>
@@ -1676,19 +1729,19 @@ const buildContractTemplate = (
 <p>Net profits shall be allocated as follows:</p>
 <ol>
 <li><strong>First:</strong> Repayment of ${ensureValue(
-      formData?.llcInvestorName
+      formData?.llcInvestorName,
     )}'s working capital advances</li>
 <li><strong>Second:</strong> Return of capital contributions (pro rata)</li>
 <li><strong>Third:</strong> Profit distributions according to ownership percentages:
 <ul>
 <li>${ensureValue(formData?.llcInvestorName)}: ${ensureValue(
-      formData?.llcInvestorOwnership
+      formData?.llcInvestorOwnership,
     )}</li>
 <li>${ensureValue(formData?.llcMember1Name)}: ${ensureValue(
-      formData?.llcMember1Ownership
+      formData?.llcMember1Ownership,
     )}</li>
 <li>${ensureValue(formData?.llcMember2Name)}: ${ensureValue(
-      formData?.llcMember2Ownership
+      formData?.llcMember2Ownership,
     )}</li>
 </ul>
 </li>
@@ -1700,12 +1753,12 @@ const buildContractTemplate = (
 <h2>6.3 Special Allocations</h2>
 <ul>
 <li><strong>Performance Bonuses:</strong> Up to ${ensureValue(
-      formData?.llcBonusPercentage
+      formData?.llcBonusPercentage,
     )}% of net profits may be allocated as performance bonuses</li>
 <li><strong>Management Fees:</strong> ${ensureValue(
-      formData?.llcManagementFeePercentage
+      formData?.llcManagementFeePercentage,
     )}% management fee to ${ensureValue(
-      formData?.llcInvestorName
+      formData?.llcInvestorName,
     )} for financial oversight</li>
 </ul>
 
@@ -1717,30 +1770,30 @@ const buildContractTemplate = (
 <ul>
 <li><strong>Quarterly Distributions:</strong> Distributions may be made quarterly upon Board approval</li>
 <li><strong>Reserve Requirements:</strong> Maintain minimum cash reserves of $${ensureValue(
-      formData?.llcMinReserves
+      formData?.llcMinReserves,
     )}</li>
 <li><strong>Working Capital Recovery:</strong> ${ensureValue(
-      formData?.llcInvestorName
+      formData?.llcInvestorName,
     )} shall recover working capital advances before other distributions</li>
 </ul>
 
 <h2>7.2 Capital Recovery Mechanism</h2>
 <p><strong>For ${ensureValue(
-      formData?.llcInvestorName
+      formData?.llcInvestorName,
     )}'s Investment Recovery:</strong></p>
 <ol>
 <li><strong>Priority Recovery:</strong> Working capital advances shall be recovered first from available cash flow</li>
 <li><strong>Recovery Schedule:</strong> Minimum ${ensureValue(
-      formData?.llcRecoveryPercentage
+      formData?.llcRecoveryPercentage,
     )}% of available cash flow until full recovery</li>
 <li><strong>Interest on Advances:</strong> Working capital advances shall bear interest at ${ensureValue(
-      formData?.llcInterestRate
+      formData?.llcInterestRate,
     )}% per annum</li>
 <li><strong>Acceleration Rights:</strong> ${ensureValue(
-      formData?.llcInvestorName
+      formData?.llcInvestorName,
     )} may accelerate recovery in case of material breach</li>
 <li><strong>Security Interest:</strong> ${ensureValue(
-      formData?.llcInvestorName
+      formData?.llcInvestorName,
     )} shall have a security interest in Company assets for unrecovered advances</li>
 </ol>
 
@@ -1748,55 +1801,55 @@ const buildContractTemplate = (
 <ol>
 <li>Operating expenses and reserves</li>
 <li>${ensureValue(
-      formData?.llcInvestorName
+      formData?.llcInvestorName,
     )}'s working capital recovery (with interest)</li>
 <li>Return of capital contributions</li>
 <li>Profit distributions (${ensureValue(
-      formData?.llcInvestorOwnership
+      formData?.llcInvestorOwnership,
     )}/${ensureValue(formData?.llcMember1Ownership)}/${ensureValue(
-      formData?.llcMember2Ownership
+      formData?.llcMember2Ownership,
     )})</li>
 </ol>
 
 <h2>7.4 Investor Return Plan and Exit Strategy</h2>
 <p><strong>Return Timeline:</strong> ${ensureValue(
-      formData?.llcInvestorName
+      formData?.llcInvestorName,
     )} expects to recover their investment within ${ensureValue(
-      formData?.llcInvestorReturnTimeline
+      formData?.llcInvestorReturnTimeline,
     )} months from commencement of operations.</p>
 
 <p><strong>Break-Even Projection:</strong> The Company is projected to achieve break-even status within ${ensureValue(
-      formData?.llcBreakEvenMonths
+      formData?.llcBreakEvenMonths,
     )} months, with expected monthly revenue of $${ensureValue(
-      formData?.llcExpectedMonthlyRevenue
+      formData?.llcExpectedMonthlyRevenue,
     )} against monthly operating costs of $${ensureValue(
-      formData?.llcTotalMonthlyCosts
+      formData?.llcTotalMonthlyCosts,
     )}.</p>
 
 <p><strong>Exit Strategy:</strong> The Company's planned exit strategy is ${ensureValue(
-      formData?.llcExitStrategy
+      formData?.llcExitStrategy,
     )}. In the event of liquidation or sale, ${ensureValue(
-      formData?.llcInvestorName
+      formData?.llcInvestorName,
     )} shall have a liquidation preference of ${ensureValue(
-      formData?.llcLiquidationPreference
+      formData?.llcLiquidationPreference,
     )}.</p>
 
 <p><strong>Monthly Cost Coverage:</strong> During the initial operating period, ${ensureValue(
-      formData?.llcInvestorName
+      formData?.llcInvestorName,
     )} will cover monthly operating costs of approximately $${ensureValue(
-      formData?.llcTotalMonthlyCosts
+      formData?.llcTotalMonthlyCosts,
     )}, including rent ($${ensureValue(
-      formData?.llcMonthlyRent
+      formData?.llcMonthlyRent,
     )}), utilities ($${ensureValue(
-      formData?.llcMonthlyUtilities
+      formData?.llcMonthlyUtilities,
     )}), insurance ($${ensureValue(
-      formData?.llcMonthlyInsurance
+      formData?.llcMonthlyInsurance,
     )}), software ($${ensureValue(
-      formData?.llcMonthlySoftware
+      formData?.llcMonthlySoftware,
     )}), marketing ($${ensureValue(
-      formData?.llcMonthlyMarketing
+      formData?.llcMonthlyMarketing,
     )}), salaries ($${ensureValue(
-      formData?.llcMonthlySalaries
+      formData?.llcMonthlySalaries,
     )}), and other expenses ($${ensureValue(formData?.llcMonthlyOther)}).</p>
 
 <div class="separator"></div>
@@ -1813,7 +1866,7 @@ const buildContractTemplate = (
 <h2>8.2 Carrier Relationships</h2>
 <ul>
 <li>Maintain relationships with minimum ${ensureValue(
-      formData?.llcMinCarriers
+      formData?.llcMinCarriers,
     )} A-rated carriers</li>
 <li>Comply with carrier appointment agreements</li>
 <li>Meet carrier production and quality requirements</li>
@@ -1824,7 +1877,7 @@ const buildContractTemplate = (
 <li><strong>NAIC Compliance:</strong> Adhere to National Association of Insurance Commissioners standards</li>
 <li><strong>State Regulations:</strong> Comply with all applicable state insurance laws</li>
 <li><strong>E&O Insurance:</strong> Maintain errors and omissions insurance of minimum $${ensureValue(
-      formData?.llcEOCoverage
+      formData?.llcEOCoverage,
     )}</li>
 <li><strong>Bonding:</strong> Maintain surety bonds as required by state law</li>
 </ul>
@@ -1854,7 +1907,7 @@ const buildContractTemplate = (
 <li><strong>Triggering Events:</strong> Death, disability, bankruptcy, or voluntary departure</li>
 <li><strong>Valuation Method:</strong> Independent appraisal or formula-based valuation</li>
 <li><strong>Payment Terms:</strong> Installment payments over ${ensureValue(
-      formData?.llcPaymentPeriod
+      formData?.llcPaymentPeriod,
     )} years</li>
 <li><strong>Insurance Requirements:</strong> Life and disability insurance to fund buyouts</li>
 </ul>
@@ -1876,7 +1929,7 @@ const buildContractTemplate = (
 <ol>
 <li>Pay creditors</li>
 <li>Return ${ensureValue(
-      formData?.llcInvestorName
+      formData?.llcInvestorName,
     )}'s working capital advances</li>
 <li>Return capital contributions</li>
 <li>Distribute remaining assets according to ownership percentages</li>
@@ -1895,7 +1948,7 @@ const buildContractTemplate = (
 
 <h2>11.1 Governing Law</h2>
 <p>This Agreement shall be governed by the laws of ${ensureValue(
-      formData?.llcState
+      formData?.llcState,
     )}.</p>
 
 <h2>11.2 Dispute Resolution</h2>
@@ -1903,7 +1956,7 @@ const buildContractTemplate = (
 <li><strong>Mediation:</strong> Good faith mediation before litigation</li>
 <li><strong>Arbitration:</strong> Binding arbitration for unresolved disputes</li>
 <li><strong>Jurisdiction:</strong> ${ensureValue(
-      formData?.llcJurisdiction
+      formData?.llcJurisdiction,
     )} courts for enforcement</li>
 </ul>
 
@@ -1919,7 +1972,7 @@ const buildContractTemplate = (
 <li>Amendments require unanimous consent of all Members</li>
 <li>Written notice of proposed amendments</li>
 <li>${ensureValue(
-      formData?.llcAmendmentNoticePeriod
+      formData?.llcAmendmentNoticePeriod,
     )} days for consideration</li>
 </ul>
 
@@ -1942,23 +1995,23 @@ const buildContractTemplate = (
 <h1>EXECUTION</h1>
 
 <p>IN WITNESS WHEREOF, the Members have executed this Operating Agreement as of ${ensureValue(
-      formData?.llcExecutionDate
+      formData?.llcExecutionDate,
     )}.</p>
 
 <p><strong>${ensureValue(
-      formData?.llcInvestorName
+      formData?.llcInvestorName,
     )}</strong> (Managing Member)<br>
 Signature: _________________________<br>
 Date: _____________________________</p>
 
 <p><strong>${ensureValue(
-      formData?.llcMember1Name
+      formData?.llcMember1Name,
     )}</strong> (Operating Member)<br>
 Signature: _________________________<br>
 Date: _____________________________</p>
 
 <p><strong>${ensureValue(
-      formData?.llcMember2Name
+      formData?.llcMember2Name,
     )}</strong> (Operating Member)<br>
 Signature: _________________________<br>
 Date: _____________________________</p>
@@ -1971,15 +2024,15 @@ Date: _____________________________</p>
 County of ${ensureValue(formData?.llcCounty)}</p>
 
 <p>On this ${ensureValue(
-      formData?.llcExecutionDate
+      formData?.llcExecutionDate,
     )}, before me personally appeared ${ensureValue(
-      formData?.llcInvestorName
+      formData?.llcInvestorName,
     )}, ${ensureValue(formData?.llcMember1Name)}, and ${ensureValue(
-      formData?.llcMember2Name
+      formData?.llcMember2Name,
     )}, who proved to me on the basis of satisfactory evidence to be the persons whose names are subscribed to the within instrument and acknowledged to me that they executed the same in their authorized capacities, and that by their signatures on the instrument the persons, or the entity upon behalf of which the persons acted, executed the instrument.</p>
 
 <p>I certify under PENALTY OF PERJURY under the laws of the State of ${ensureValue(
-      formData?.llcState
+      formData?.llcState,
     )} that the foregoing paragraph is true and correct.</p>
 
 <p>WITNESS my hand and official seal.</p>
@@ -1991,7 +2044,7 @@ My Commission Expires: ${ensureValue(formData?.llcNotaryExpiration)}</p>
 <div class="separator"></div>
 
 <p><em>This Operating Agreement represents a comprehensive framework for the operation of ${ensureValue(
-      formData?.llcCompanyName
+      formData?.llcCompanyName,
     )} LLC as a professional auto insurance agency. All variable fields should be customized based on specific business requirements and legal counsel recommendations.</em></p>
 
 </div>`;
@@ -2005,54 +2058,14 @@ My Commission Expires: ${ensureValue(formData?.llcNotaryExpiration)}</p>
     return generateLLCContract(formData, effectiveDate);
   }
 
-  // Robust check for CPL2 to ensure correct branding
-  const isAce = formData.contractType === "CPL2" || formData.type === "CPL2";
-
-  const branding = isAce
-    ? {
-        logo: "/ace-logo.png",
-        primary: "#0d1130", // Explicitly requested darker blue
-        secondary: "#08c1bd", // Explicitly requested teal
-        companyName: "Ace Solutions Group",
-        addressLine1:
-          "Suite No 102, 12781 Darby Brooke Ct, Woodbridge, VA 22192",
-        phone: "(844) 572-1770",
-      }
-    : {
-        logo: "/perenroll.png",
-        primary: "#263149",
-        secondary: "#24bd68",
-        companyName: "",
-        addressLine1: "",
-        phone: "",
-      };
-
-  let contractStyles = GLOBAL_STYLE_BLOCK;
-  if (isAce) {
-    contractStyles = contractStyles
-      .replace(/#24bd68/g, branding.secondary)
-      .replace(/#263149/g, branding.primary)
-      .replace(/#1ea456/g, "#069d99") // Hover adjustment
-      .replace(/#374151/g, branding.primary) // Ensure headings use primary
-      .replace(/#64748b/g, "#2c304b"); // Subtitles to Midnight Masquerade
-  }
-
-  return `<style>${contractStyles}</style>
-  <div class="contract-body">
-  <div class="contract-header">
-  <img src="${
+  return `<div class="contract-body">
+<div class="contract-header">
+<img src="${
     typeof window !== "undefined"
-      ? window.location.origin + branding.logo
-      : branding.logo
-  }" alt="Logo" class="contract-logo" onerror="this.style.display='none'" />
-  ${
-    isAce
-      ? `<div style="margin-bottom: 1rem;">
-         <p class="contract-subtitle" style="font-size: 10pt; margin-top: 0;">${branding.addressLine1}<br>${branding.phone}</p>
-         </div>`
-      : ""
-  }
-  <h1>${getContractTitle()}</h1>
+      ? window.location.origin + "/pvnvoice.png"
+      : "/pvnvoice.png"
+  }" alt="PVNVoice Logo" class="contract-logo" onerror="this.style.display='none'" />
+<h1>${getContractTitle()}</h1>
 <p class="contract-subtitle">Effective Date: ${effectiveDate}</p>
 </div>
 
@@ -2062,16 +2075,16 @@ My Commission Expires: ${ensureValue(formData?.llcNotaryExpiration)}</p>
 
 <div class="party-section">
 <p class="no-indent"><strong>${partyLabels.buyer}:</strong> ${ensureValue(
-    formData?.buyer?.companyName
+    formData?.buyer?.companyName,
   )} (${ensureValue(formData?.buyer?.entityType)})</p>
 <p class="no-indent"><strong>Principal Address:</strong> ${ensureValue(
-    formData?.buyer?.address
+    formData?.buyer?.address,
   )}</p>
 <p class="no-indent"><strong>Primary Contact Email:</strong> ${ensureValue(
-    formData?.buyer?.email
+    formData?.buyer?.email,
   )}</p>
 <p class="no-indent"><strong>Primary Contact Phone:</strong> ${ensureValue(
-    formData?.buyer?.phone
+    formData?.buyer?.phone,
   )}</p>
 </div>
 
@@ -2079,16 +2092,16 @@ My Commission Expires: ${ensureValue(formData?.llcNotaryExpiration)}</p>
 
 <div class="party-section">
 <p class="no-indent"><strong>${partyLabels.publisher}:</strong> ${ensureValue(
-    formData?.publisher?.companyName
+    formData?.publisher?.companyName,
   )} (${ensureValue(formData?.publisher?.entityType)})</p>
 <p class="no-indent"><strong>Principal Address:</strong> ${ensureValue(
-    formData?.publisher?.address
+    formData?.publisher?.address,
   )}</p>
 <p class="no-indent"><strong>Primary Contact Email:</strong> ${ensureValue(
-    formData?.publisher?.email
+    formData?.publisher?.email,
   )}</p>
 <p class="no-indent"><strong>Primary Contact Phone:</strong> ${ensureValue(
-    formData?.publisher?.phone
+    formData?.publisher?.phone,
   )}</p>
 </div>
 
@@ -2102,21 +2115,19 @@ My Commission Expires: ${ensureValue(formData?.llcNotaryExpiration)}</p>
 <p><strong>WHEREAS,</strong> ${
     formData?.type === "Employment Contract"
       ? `the Employer desires to engage the Employee as a ${ensureValue(
-          formData?.jobTitle
+          formData?.jobTitle,
         )} and the Employee desires to accept such employment`
       : formData?.type === "ACA Health"
-      ? "the ACA Insurance Agency requires qualified agents to sell ACA health insurance policies and the Recruiter specializes in recruiting and hiring such agents"
-      : formData?.type === "FE Closing"
-      ? "Publisher specializes in sourcing and qualifying inbound and outbound telemarketing calls for compliant CPA campaigns"
-      : "Publisher specializes in sourcing and qualifying inbound telemarketing calls for compliant pay-per-call campaigns"
+        ? "the ACA Insurance Agency requires qualified agents to sell ACA health insurance policies and the Recruiter specializes in recruiting and hiring such agents"
+        : "Publisher specializes in sourcing and qualifying inbound telemarketing calls for compliant pay-per-call campaigns"
   }; and</p>
 
 <p><strong>WHEREAS,</strong> ${
     formData?.type === "Employment Contract"
       ? "the Parties desire to establish the terms and conditions of employment, including compensation, benefits, duties, and responsibilities"
       : formData?.type === "ACA Health"
-      ? "the Agency desires to engage the Recruiter for agent recruitment services to build their agent network"
-      : "Buyer desires to receive such calls and compensate Publisher"
+        ? "the Agency desires to engage the Recruiter for agent recruitment services to build their agent network"
+        : "Buyer desires to receive such calls and compensate Publisher"
   } pursuant to the commercial terms set forth in this Agreement; and</p>
 
 <p><strong>WHEREAS,</strong> the Parties wish to memorialize their respective obligations, representations, warranties, and indemnities in a binding writing enforceable under Applicable Law.</p>
@@ -2138,49 +2149,45 @@ My Commission Expires: ${ensureValue(formData?.llcNotaryExpiration)}</p>
     formData?.type === "Employment Contract"
       ? '<strong>"Employment"</strong> means the employment relationship established between Employer and Employee pursuant to this Agreement.'
       : formData?.type === "ACA Health"
-      ? '<strong>"Agent Recruitment Services"</strong> means the services provided by Recruiter to identify, recruit, hire, and support qualified insurance agents for the Agency.'
-      : formData?.type === "FE Closing"
-      ? '<strong>"Campaign"</strong> means the CPA program described in Exhibit A.'
-      : '<strong>"Campaign"</strong> means the pay-per-call program described in Exhibit A.'
+        ? '<strong>"Agent Recruitment Services"</strong> means the services provided by Recruiter to identify, recruit, hire, and support qualified insurance agents for the Agency.'
+        : '<strong>"Campaign"</strong> means the pay-per-call program described in Exhibit A.'
   }</p>
 
 <p><span class="section-number">1.3</span> ${
     formData?.type === "Employment Contract"
       ? '<strong>"Compensation"</strong> means the total remuneration package provided to Employee, including base salary, hourly wages, commissions, bonuses, and benefits as specified in this Agreement.'
       : formData?.type === "ACA Health"
-      ? '<strong>"NPN Override Agent"</strong> means an insurance agent who provides their National Producer Number (NPN) to the Agency for contracting purposes to sell ACA health insurance policies.'
-      : formData?.type === "CPA"
-      ? '<strong>"Qualified Sale"</strong> means a Sale that satisfies the targeting and compliance requirements in Exhibit A.'
-      : formData?.type === "FE Closing"
-      ? '<strong>"Qualified Call"</strong> means a Call that satisfies the targeting and compliance requirements in Exhibit A including sales generated from calls.'
-      : '<strong>"Qualified Call"</strong> means a Call that satisfies the targeting and compliance requirements in Exhibit A and remains connected to Buyer for at least the applicable billable duration.'
+        ? '<strong>"NPN Override Agent"</strong> means an insurance agent who provides their National Producer Number (NPN) to the Agency for contracting purposes to sell ACA health insurance policies.'
+        : formData?.type === "CPA"
+          ? '<strong>"Qualified Sale"</strong> means a Sale that satisfies the targeting and compliance requirements in Exhibit A.'
+          : '<strong>"Qualified Call"</strong> means a Call that satisfies the targeting and compliance requirements in Exhibit A and remains connected to Buyer for at least the applicable billable duration.'
   }</p>
 
 <p><span class="section-number">1.4</span> ${
     formData?.type === "Employment Contract"
       ? '<strong>"Job Duties"</strong> means the specific responsibilities, tasks, and obligations of Employee as outlined in the job description and performance expectations.'
       : formData?.type === "ACA Health"
-      ? '<strong>"Direct Sales Agent"</strong> means an insurance agent recruited by Recruiter who will sell ACA health insurance policies directly to consumers.'
-      : formData?.type === "CPA"
-      ? '<strong>"Sale"</strong> means a conversion event as defined in Exhibit A.'
-      : '<strong>"Call"</strong> means a telephone call generated by Publisher and delivered to Buyer.'
+        ? '<strong>"Direct Sales Agent"</strong> means an insurance agent recruited by Recruiter who will sell ACA health insurance policies directly to consumers.'
+        : formData?.type === "CPA"
+          ? '<strong>"Sale"</strong> means a conversion event as defined in Exhibit A.'
+          : '<strong>"Call"</strong> means a telephone call generated by Publisher and delivered to Buyer.'
   }</p>
 
 <p><span class="section-number">1.5</span> ${
     formData?.type === "Employment Contract"
       ? '<strong>"Confidential Information"</strong> means all proprietary, confidential, and trade secret information of Employer, including but not limited to customer lists, business strategies, financial data, and technical information.'
       : formData?.type === "ACA Health"
-      ? '<strong>"Active Policy"</strong> means an ACA health insurance policy that has been issued by the carrier and for which the customer is current on premium payments.'
-      : formData?.type === "CPL"
-      ? '<strong>"Billable Duration"</strong> means the minimum call length required for a Call to qualify for payment.'
-      : '<strong>"Traffic Source"</strong> means the origin of conversions, including but not limited to digital advertising, direct mail, or other marketing channels.'
+        ? '<strong>"Active Policy"</strong> means an ACA health insurance policy that has been issued by the carrier and for which the customer is current on premium payments.'
+        : formData?.type === "CPL"
+          ? '<strong>"Billable Duration"</strong> means the minimum call length required for a Call to qualify for payment.'
+          : '<strong>"Traffic Source"</strong> means the origin of conversions, including but not limited to digital advertising, direct mail, or other marketing channels.'
   }</p>
 
 ${
-  formData?.type === "CPL" || formData?.type === "CPL2"
-    ? `<p><span class="section-number">1.5a</span> <strong>"Buffer Time"</strong> means the duration of time (${ensureValue(
-        formData?.bufferTime
-      )} seconds) that a customer is actually connected to an agent, as verified by call recording duration. The Buffer Time period commences when the customer connects with the agent. Calls that terminate within the Buffer Time are not billable. <strong>"Dead Air"</strong> calls, defined as calls where no customer is on the line or where the customer disconnects before speaking to an agent, are not billable regardless of duration.</p>`
+  formData?.type === "CPL"
+    ? `<p><span class="section-number">1.5a</span> <strong>"Buffer Time"</strong> means the amount of time (${ensureValue(
+        formData?.bufferTime,
+      )} seconds) from the initiation of a Call during which Buyer has the opportunity to speak with the prospect before the Call becomes billable. Calls that terminate within the Buffer Time are not billable to Buyer.</p>`
     : ""
 }
 
@@ -2188,10 +2195,10 @@ ${
     formData?.type === "Employment Contract"
       ? '<strong>"Intellectual Property"</strong> means all inventions, discoveries, improvements, works of authorship, and other intellectual property created by Employee during the course of employment.'
       : formData?.type === "ACA Health"
-      ? '<strong>"Carrier"</strong> means the insurance company that issues and administers ACA health insurance policies.'
-      : formData?.type === "CPL"
-      ? '<strong>"Traffic Source"</strong> means the origin of calls, including but not limited to digital advertising, direct mail, or other marketing channels.'
-      : '<strong>"Conversion Event"</strong> means the specific qualifying action as defined in Exhibit A.'
+        ? '<strong>"Carrier"</strong> means the insurance company that issues and administers ACA health insurance policies.'
+        : formData?.type === "CPL"
+          ? '<strong>"Traffic Source"</strong> means the origin of calls, including but not limited to digital advertising, direct mail, or other marketing channels.'
+          : '<strong>"Conversion Event"</strong> means the specific qualifying action as defined in Exhibit A.'
   }</p>
 
 <p><span class="section-number">1.7</span> Headings are for reference only and do not affect interpretation. Terms used in the singular include the plural and vice versa.</p>
@@ -2202,35 +2209,35 @@ ${
     formData?.type === "Employment Contract"
       ? "EMPLOYMENT TERMS"
       : formData?.type === "ACA Health"
-      ? "AGENT RECRUITMENT SERVICES"
-      : "CAMPAIGN GOVERNANCE"
+        ? "AGENT RECRUITMENT SERVICES"
+        : "CAMPAIGN GOVERNANCE"
   }</h1>
 
 ${
   formData?.type === "Employment Contract"
     ? `
 <p><span class="section-number">2.1</span> <strong>Position and Title:</strong> Employee is employed as a ${ensureValue(
-        formData?.jobTitle
+        formData?.jobTitle,
       )} in a ${ensureValue(
-        formData?.employmentStatus
+        formData?.employmentStatus,
       )} capacity, reporting to ${ensureValue(
-        formData?.reportingManager
+        formData?.reportingManager,
       )} in the ${ensureValue(formData?.department)} department.</p>
 
 <p><span class="section-number">2.2</span> <strong>Job Duties and Responsibilities:</strong> Employee shall perform the following duties and responsibilities: ${ensureValue(
-        formData?.jobDescription
+        formData?.jobDescription,
       )}</p>
 
 <p><span class="section-number">2.3</span> <strong>Performance Standards:</strong> Employee's performance will be evaluated based on the following metrics: ${ensureValue(
-        formData?.performanceMetrics
+        formData?.performanceMetrics,
       )}</p>
 
 <p><span class="section-number">2.4</span> <strong>Work Schedule:</strong> Employee's work schedule shall be ${ensureValue(
-        formData?.workSchedule
+        formData?.workSchedule,
       )}. Employee acknowledges that this position may require flexibility in scheduling and may include occasional overtime as business needs require.</p>
 
 <p><span class="section-number">2.5</span> <strong>Start Date:</strong> Employee's employment shall commence on ${ensureValue(
-        formData?.startDate
+        formData?.startDate,
       )}.</p>
 
 <p><span class="section-number">2.6</span> <strong>Probationary Period:</strong> ${
@@ -2239,45 +2246,41 @@ ${
       }</p>
 `
     : formData?.type === "ACA Health"
-    ? `
+      ? formData?.acaSubType === "CPL"
+        ? `
+<p><span class="section-number">2.1</span> Publisher shall source, qualify, and deliver inbound calls relating to ACA health insurance products to Buyer in accordance with the targeting and compliance requirements set forth in Exhibit A.</p>
+
+<p><span class="section-number">2.2</span> A "Qualified Call" means a call that meets the minimum duration threshold of ${ensureValue(formData?.acaCplBufferTime)} seconds and originates from a verified consumer seeking ACA health insurance information or enrollment assistance.</p>
+`
+        : formData?.acaSubType === "CPA"
+          ? `
+<p><span class="section-number">2.1</span> Publisher shall source, qualify, and deliver verified ACA health insurance enrollments ("Qualified Enrollments") to Buyer. A Qualified Enrollment means a completed application resulting in an active health insurance policy issued by a participating carrier.</p>
+
+<p><span class="section-number">2.2</span> Buyer shall provide necessary carrier access, training materials, and administrative support to facilitate the enrollment process. Publisher shall ensure all enrollments comply with CMS guidelines and applicable state regulations.</p>
+`
+          : `
 <p><span class="section-number">2.1</span> Recruiter shall identify, recruit, and hire qualified insurance agents for the Agency in two categories: (a) NPN Override Agents who provide their National Producer Number for Agency contracting purposes, and (b) Direct Sales Agents who will sell ACA health insurance policies directly to consumers.</p>
 
 <p><span class="section-number">2.2</span> Agency shall provide comprehensive training, support, and administrative services for all recruited agents, including carrier contracting, policy administration, and customer service.</p>
 `
-    : formData?.type === "FE Closing"
-    ? `
-<p><span class="section-number">2.1</span> Publisher will source, qualify, and deliver Calls to its own licensed final expense agents and generate final expense applications in accordance with the targeting and compliance requirements set forth in Exhibit A.</p>
-
-<p><span class="section-number">2.2</span> Buyer shall accept all applications in accordance with Applicable Law and the terms of this Agreement.</p>
-
-<p><span class="section-number">2.3</span> Both Parties shall maintain detailed call logs, consent documentation, and disposition data for audit and compliance purposes.</p>
-`
-    : `
+      : `
 <p><span class="section-number">2.1</span> Publisher will source, qualify, and deliver Calls to Buyer in accordance with the targeting and compliance requirements set forth in Exhibit A.</p>
 
 <p><span class="section-number">2.2</span> Buyer shall accept and handle all Qualified Calls in accordance with Applicable Law and the terms of this Agreement.</p>
 `
 }
 
-${
-  formData?.type === "FE Closing"
-    ? ""
-    : `<p><span class="section-number">2.3</span> ${
-        formData?.type === "ACA Health"
-          ? "Both Parties shall maintain detailed records of all recruitment activities, agent performance, and policy sales for audit and compliance purposes."
-          : "Both Parties shall maintain detailed call logs, consent documentation, and disposition data for audit and compliance purposes."
-      }</p>`
-}
+<p><span class="section-number">2.3</span> ${
+    formData?.type === "ACA Health"
+      ? "Both Parties shall maintain detailed records of all recruitment activities, agent performance, and policy sales for audit and compliance purposes."
+      : "Both Parties shall maintain detailed call logs, consent documentation, and disposition data for audit and compliance purposes."
+  }</p>
 
-${
-  formData?.type === "FE Closing"
-    ? ""
-    : `<p><span class="section-number">2.4</span> ${
-        formData?.type === "ACA Health"
-          ? "Recruiter shall maintain detailed records of all agent recruitment activities, including candidate sourcing, interview processes, hiring decisions, and performance evaluations. These records shall be available for Agency review upon reasonable notice."
-          : "Publisher shall maintain detailed records of all call generation activities, including traffic sources, conversion rates, and quality metrics. These records shall be available for Buyer review upon reasonable notice."
-      }</p>`
-}
+<p><span class="section-number">2.4</span> ${
+    formData?.type === "ACA Health"
+      ? "Recruiter shall maintain detailed records of all agent recruitment activities, including candidate sourcing, interview processes, hiring decisions, and performance evaluations. These records shall be available for Agency review upon reasonable notice."
+      : "Publisher shall maintain detailed records of all call generation activities, including traffic sources, conversion rates, and quality metrics. These records shall be available for Buyer review upon reasonable notice."
+  }</p>
 
 <div class="separator"></div>
 
@@ -2291,14 +2294,14 @@ ${
   formData?.compensationType === "Hourly"
     ? `$${ensureValue(formData?.hourlyRate)} per hour`
     : formData?.compensationType === "Salary"
-    ? `$${ensureValue(formData?.salaryAmount)} annually`
-    : formData?.compensationType === "Commission"
-    ? `${ensureValue(formData?.commissionRate)}% commission on sales`
-    : formData?.compensationType === "Hourly + Commission"
-    ? `$${ensureValue(formData?.hourlyRate)} per hour plus ${ensureValue(
-        formData?.commissionRate
-      )}% commission on sales`
-    : "As specified in the compensation schedule"
+      ? `$${ensureValue(formData?.salaryAmount)} annually`
+      : formData?.compensationType === "Commission"
+        ? `${ensureValue(formData?.commissionRate)}% commission on sales`
+        : formData?.compensationType === "Hourly + Commission"
+          ? `$${ensureValue(formData?.hourlyRate)} per hour plus ${ensureValue(
+              formData?.commissionRate,
+            )}% commission on sales`
+          : "As specified in the compensation schedule"
 }</p>
 
 ${
@@ -2306,7 +2309,7 @@ ${
   formData?.compensationType === "Hourly + Commission"
     ? `
 <p><span class="section-number">3.2</span> <strong>Commission Structure:</strong> ${ensureValue(
-        formData?.commissionStructure
+        formData?.commissionStructure,
       )}</p>
 `
     : ""
@@ -2403,8 +2406,8 @@ ${
     formData?.type === "Employment Contract"
       ? "GOVERNING LAW AND DISPUTE RESOLUTION"
       : formData?.type === "ACA Health"
-      ? "AGENT LICENSING AND COMPLIANCE"
-      : "CONSENT, EVIDENCE, AND COMPLIANCE"
+        ? "AGENT LICENSING AND COMPLIANCE"
+        : "CONSENT, EVIDENCE, AND COMPLIANCE"
   }</h1>
 
 <p><span class="section-number">3.1</span> ${
@@ -2433,41 +2436,33 @@ ${
       : "CALL HANDLING AND BUFFER PROTOCOLS"
   }</h1>
 
-${
-  formData?.type === "FE Closing"
-    ? ""
-    : `<p><span class="section-number">4.1</span> ${
-        formData?.type === "ACA Health"
-          ? "Agency shall provide comprehensive training materials, sales scripts, and ongoing support for all recruited agents. Agency shall ensure adequate staffing to support agent needs during business hours."
-          : formData?.type === "CPL" || formData?.type === "CPL2"
-          ? `Buyer shall ensure adequate staffing and technical capacity to accept Calls during designated hours. The Buffer Time of ${ensureValue(
-              formData?.bufferTime
-            )} seconds provides Buyer with a grace period to confirm a live customer is present. <strong>Dead Air calls are not billable.</strong> A Dead Air call is defined as a call where no customer is on the line. The Buffer Time is measured based on the duration the customer is actually connected to the agent according to the call recording.`
-          : "Buyer shall ensure adequate staffing and technical capacity to accept Calls during designated hours."
-      }</p>`
-}
+<p><span class="section-number">4.1</span> ${
+    formData?.type === "ACA Health"
+      ? "Agency shall provide comprehensive training materials, sales scripts, and ongoing support for all recruited agents. Agency shall ensure adequate staffing to support agent needs during business hours."
+      : formData?.type === "CPL"
+        ? `Buyer shall ensure adequate staffing and technical capacity to accept Calls during designated hours. The Buffer Time of ${ensureValue(
+            formData?.bufferTime,
+          )} seconds provides Buyer with a grace period from Call initiation during which Buyer may speak with the prospect without incurring charges. Calls that terminate or are disconnected within the Buffer Time are not billable to Buyer and shall not be counted as Qualified Calls.`
+        : "Buyer shall ensure adequate staffing and technical capacity to accept Calls during designated hours."
+  }</p>
 
 ${
-  formData?.type === "CPL" || formData?.type === "CPL2"
-    ? `<p><span class="section-number">4.1a</span> <strong>Buffer Time & Dead Air Policy:</strong> The Buffer Time of ${ensureValue(
-        formData?.bufferTime
-      )} seconds refers to the duration a customer is actually connected to the agent. Calls where no customer is present ("Dead Air") are never billable to Buyer, regardless of call duration. Only Calls where a live customer is connected to the agent for at least ${ensureValue(
-        formData?.bufferTime
-      )} seconds, as verified by the duration on the call recording, shall qualify for billing.</p>`
+  formData?.type === "CPL"
+    ? `<p><span class="section-number">4.1a</span> <strong>Buffer Time Implementation:</strong> The Buffer Time period of ${ensureValue(
+        formData?.bufferTime,
+      )} seconds commences immediately upon Call connection. During this period, Buyer has the exclusive opportunity to engage with the prospect and assess call quality before the Call becomes billable. Only Calls that remain connected for at least ${ensureValue(
+        formData?.bufferTime,
+      )} seconds shall qualify for billing.</p>`
     : ""
 }
 
-<p><span class="section-number">${
-    formData?.type === "FE Closing" ? "4.1" : "4.2"
-  }</span> ${
+<p><span class="section-number">4.2</span> ${
     formData?.type === "ACA Health"
       ? "Recruiter shall provide ongoing support and training to recruited agents to ensure they meet performance standards and maintain compliance with all applicable regulations."
       : "Publisher may monitor live transfers, IVR flows, and call recordings to verify call quality and adherence to scripts. Buyer consents to such quality assurance measures to the extent permitted by Applicable Law."
   }</p>
 
-<p><span class="section-number">${
-    formData?.type === "FE Closing" ? "4.2" : "4.3"
-  }</span> ${
+<p><span class="section-number">4.3</span> ${
     formData?.type === "ACA Health"
       ? "Agency shall implement quality assurance measures to monitor agent performance and ensure compliance with all applicable laws and regulations."
       : "Where overseas or remote call centers are utilized, the responsible Party shall implement enhanced linguistic, cultural, and compliance training to protect consumers and brand integrity."
@@ -2483,24 +2478,32 @@ ${
 
 <p><span class="section-number">5.1</span> ${
     formData?.type === "ACA Health"
-      ? "Payment Structure: See ACA Health payment structure detailed in Section 5.6-5.9 below."
+      ? formData?.acaSubType === "CPL"
+        ? `Payout per Qualified Call: ${formatCurrency(formData?.acaCplPayout)}. A Qualified Call is defined as a call lasting ${ensureValue(formData?.acaCplBufferTime)} seconds or longer from a verified consumer seeking ACA health insurance information.`
+        : formData?.acaSubType === "CPA"
+          ? `Payout per Qualified Enrollment: ${formatCurrency(formData?.acaCpaPayout)}. A Qualified Enrollment is defined as a completed ACA health insurance application resulting in an active policy issued by a participating carrier.`
+          : "Payment Structure: See ACA Health partnership payment structure detailed in Section 5.6-5.9 below."
       : formData?.type === "CPA"
-      ? formData?.vertical === "Final Expense"
-        ? formData?.payoutType === "percentage"
-          ? `Payout per Qualified Sale: Level: ${formData?.payoutPercentageLevel}% of annual premium, All Other: ${formData?.payoutPercentageAllOther}% of annual premium`
-          : `Payout per Qualified Sale: Level: ${formatCurrency(
-              formData?.payoutLevel
-            )}, All Other: ${formatCurrency(formData?.payoutAllOther)}`
-        : `Payout per Qualified Sale: ${formatCurrency(formData?.payout)}`
-      : formData?.type === "FE Closing"
-      ? `Payout per Qualified Call: Frontend Commission: ${formData?.feClosingFrontendCommission}%, Backend Commission: ${formData?.feClosingBackendCommission}%`
-      : `Payout per Qualified Call: ${formatCurrency(formData?.payout)}`
+        ? formData?.vertical === "Final Expense"
+          ? formData?.payoutType === "percentage"
+            ? `Payout per Qualified Sale: Level: ${formData?.payoutPercentageLevel}% of annual premium, All Other: ${formData?.payoutPercentageAllOther}% of annual premium`
+            : `Payout per Qualified Sale: Level: ${formatCurrency(
+                formData?.payoutLevel,
+              )}, All Other: ${formatCurrency(formData?.payoutAllOther)}`
+          : `Payout per Qualified Sale: ${formatCurrency(formData?.payout)}`
+        : `Payout per Qualified Call: ${formatCurrency(formData?.payout)}`
   }</p>
 
 <p><span class="section-number">5.2</span> ${
     formData?.type === "ACA Health"
-      ? "Payment Timing: All payments are contingent upon policies being issued and paid by the carrier. No payments will be made for policies that are not issued, cancelled, or fail to receive carrier payment."
+      ? `Billing Cycle: ${ensureValue(formData?.acaBillingCycle)}. Agreement Duration: ${ensureValue(formData?.acaDuration)} months from the Effective Date, automatically renewing for successive ${ensureValue(formData?.acaDuration)}-month periods unless either Party provides written notice of non-renewal at least thirty (30) days prior to the end of the then-current term.`
       : `Billing Cycle: ${ensureValue(formData?.billingCycle)}`
+  }</p>
+
+<p><span class="section-number">5.2a</span> ${
+    formData?.type === "ACA Health"
+      ? "Payment Timing: All payments are contingent upon policies being issued and paid by the carrier. No payments will be made for policies that are not issued, cancelled, or fail to receive carrier payment."
+      : ""
   }</p>
 
 ${
@@ -2523,51 +2526,23 @@ ${
     : ""
 }
 
-${
-  formData?.vertical === "Final Expense" && formData?.type === "CPA"
-    ? `<p><span class="section-number">5.6</span> <strong>Chargeback Liability Period:</strong> Publisher shall remain liable for chargebacks, clawbacks, or policy lapses for a period of <strong>${ensureValue(
-        formData?.chargebackLiability
-      )}</strong> from the date of the Qualified Conversion. If a policy lapses or is charged back within this period, Publisher shall refund the full payout amount or provide a replacement conversion at Buyer's discretion.</p>`
-    : ""
-}
+${formData?.vertical === "Final Expense" && formData?.type === "CPA" ? `<p><span class="section-number">5.6</span> <strong>Chargeback Liability Period:</strong> Publisher shall remain liable for chargebacks, clawbacks, or policy lapses for a period of <strong>${ensureValue(formData?.chargebackLiability)}</strong> from the date of the Qualified Conversion. If a policy lapses or is charged back within this period, Publisher shall refund the full payout amount or provide a replacement conversion at Buyer's discretion.</p>` : ""}
 
-<p><span class="section-number">${
-    formData?.vertical === "Final Expense" && formData?.type === "CPA"
-      ? "5.7"
-      : formData?.type === "CPA"
-      ? "5.6"
-      : formData?.type === "CPL"
-      ? "5.5"
-      : "5.3"
-  }</span> ${
+${formData?.type === "ACA Health" ? `<p><span class="section-number">5.5a</span> <strong>Chargeback Liability Period:</strong> Recruiter shall remain liable for policy chargebacks, clawbacks, or lapses for a period of <strong>${ensureValue(formData?.acaChargebackLiability)}</strong> from the date of the Active Policy. If a policy lapses or is charged back within this period, Recruiter shall refund the full payout amount or provide a replacement agent/sale at Agency's discretion.</p>` : ""}
+
+<p><span class="section-number">${formData?.vertical === "Final Expense" && formData?.type === "CPA" ? "5.7" : formData?.type === "CPA" ? "5.6" : formData?.type === "CPL" ? "5.5" : "5.3"}</span> ${
     formData?.type === "ACA Health"
       ? "Residual Payments: All residual payments are made on an 'as earned' basis each month, meaning Recruiter is only paid for policies that remain active and in good standing with the carrier."
       : brokerLiabilityClause
   }</p>
 
-<p><span class="section-number">${
-    formData?.vertical === "Final Expense" && formData?.type === "CPA"
-      ? "5.8"
-      : formData?.type === "CPA"
-      ? "5.7"
-      : formData?.type === "CPL"
-      ? "5.6"
-      : "5.4"
-  }</span> ${
+<p><span class="section-number">${formData?.vertical === "Final Expense" && formData?.type === "CPA" ? "5.8" : formData?.type === "CPA" ? "5.7" : formData?.type === "CPL" ? "5.6" : "5.4"}</span> ${
     formData?.type === "ACA Health"
       ? "Agency shall provide detailed monthly reports showing all policy sales, active policies, and payment calculations. Recruiter may audit these records upon reasonable notice."
       : "Publisher will issue detailed invoices aligned with the billing cycle specified in Exhibit A. Buyer shall remit payment within the stated net terms. Amounts not paid when due accrue interest at one and one-half percent (1.5%) per month or the maximum permitted by Applicable Law, whichever is lower."
   }</p>
 
-<p><span class="section-number">${
-    formData?.vertical === "Final Expense" && formData?.type === "CPA"
-      ? "5.9"
-      : formData?.type === "CPA"
-      ? "5.8"
-      : formData?.type === "CPL"
-      ? "5.7"
-      : "5.5"
-  }</span> ${
+<p><span class="section-number">${formData?.vertical === "Final Expense" && formData?.type === "CPA" ? "5.9" : formData?.type === "CPA" ? "5.8" : formData?.type === "CPL" ? "5.7" : "5.5"}</span> ${
     formData?.type === "ACA Health"
       ? "Late Payments: Amounts not paid when due accrue interest at one and one-half percent (1.5%) per month or the maximum permitted by Applicable Law, whichever is lower."
       : "Publisher may suspend or reroute traffic if Buyer is more than seven (7) days past due, upon written notice."
@@ -2583,27 +2558,19 @@ ${acaHealthClause}
       : "DATAPASS, SECURITY, AND PRIVACY"
   }</h1>
 
-${
-  formData?.type === "FE Closing"
-    ? ""
-    : `<p><span class="section-number">6.1</span> ${
-        formData?.type === "ACA Health"
-          ? "Each Party shall maintain administrative, technical, and physical safeguards that meet or exceed industry standards (including SOC 2 or ISO 27001 controls when applicable) to protect agent and customer data against unauthorized access, use, or disclosure."
-          : datapassClause
-      }</p>`
-}
+<p><span class="section-number">6.1</span> ${
+    formData?.type === "ACA Health"
+      ? "Each Party shall maintain administrative, technical, and physical safeguards that meet or exceed industry standards (including SOC 2 or ISO 27001 controls when applicable) to protect agent and customer data against unauthorized access, use, or disclosure."
+      : datapassClause
+  }</p>
 
-<p><span class="section-number">${
-    formData?.type === "FE Closing" ? "6.1" : "6.2"
-  }</span> ${
+<p><span class="section-number">6.2</span> ${
     formData?.type === "ACA Health"
       ? "All agent information, customer data, and policy details must be handled in accordance with HIPAA and applicable state insurance regulations."
       : "Each Party shall maintain administrative, technical, and physical safeguards that meet or exceed industry standards (including SOC 2 or ISO 27001 controls when applicable) to protect Call data against unauthorized access, use, or disclosure."
   }</p>
 
-<p><span class="section-number">${
-    formData?.type === "FE Closing" ? "6.2" : "6.3"
-  }</span> ${
+<p><span class="section-number">6.3</span> ${
     formData?.type === "ACA Health"
       ? "Security incidents impacting agent or customer data must be reported to the other Party within twenty-four (24) hours and followed by a written incident report within forty-eight (48) hours detailing remediation steps."
       : "Security incidents impacting Call data must be reported to the other Party within twenty-four (24) hours and followed by a written incident report within forty-eight (48) hours detailing remediation steps."
@@ -2737,9 +2704,7 @@ ${
 
 <h1>14. GOVERNING LAW AND DISPUTE RESOLUTION</h1>
 
-<p><span class="section-number">14.1</span> This Agreement shall be governed by and construed in accordance with the laws of ${
-    formData?.type === "FE Closing" ? "Tennessee" : governingLaw
-  }, without regard to conflict-of-law principles.</p>
+<p><span class="section-number">14.1</span> This Agreement shall be governed by and construed in accordance with the laws of ${governingLaw}, without regard to conflict-of-law principles.</p>
 
 <p><span class="section-number">14.2</span> ${
     formData?.type === "ACA Health"
@@ -2786,8 +2751,8 @@ ${
     formData?.type === "ACA Health"
       ? "AGENT RECRUITMENT SPECIFICATIONS"
       : formData?.type === "Employment Contract"
-      ? "COMPENSATION STRUCTURE"
-      : "CAMPAIGN SPECIFICATIONS"
+        ? "COMPENSATION STRUCTURE"
+        : "CAMPAIGN SPECIFICATIONS"
   }</h2>
 
 <div class="exhibit-content">
@@ -2795,26 +2760,26 @@ ${
   formData?.type === "Employment Contract"
     ? `
 <p class="no-indent"><strong>Position:</strong> ${ensureValue(
-        formData?.jobTitle
+        formData?.jobTitle,
       )}</p>
 <p class="no-indent"><strong>Employment Status:</strong> ${ensureValue(
-        formData?.employmentStatus
+        formData?.employmentStatus,
       )}</p>
 <p class="no-indent"><strong>Compensation Type:</strong> ${ensureValue(
-        formData?.compensationType
+        formData?.compensationType,
       )}</p>
 ${
   formData?.compensationType === "Hourly" ||
   formData?.compensationType === "Hourly + Commission"
     ? `<p class="no-indent"><strong>Hourly Rate:</strong> $${ensureValue(
-        formData?.hourlyRate
+        formData?.hourlyRate,
       )} per hour</p>`
     : ""
 }
 ${
   formData?.compensationType === "Salary"
     ? `<p class="no-indent"><strong>Annual Salary:</strong> $${ensureValue(
-        formData?.salaryAmount
+        formData?.salaryAmount,
       )}</p>`
     : ""
 }
@@ -2822,7 +2787,7 @@ ${
   formData?.compensationType === "Commission" ||
   formData?.compensationType === "Hourly + Commission"
     ? `<p class="no-indent"><strong>Commission Rate:</strong> ${ensureValue(
-        formData?.commissionRate
+        formData?.commissionRate,
       )}%</p>`
     : ""
 }
@@ -2832,20 +2797,20 @@ ${
           : "Standard company benefits"
       }</p>
 <p class="no-indent"><strong>Work Schedule:</strong> ${ensureValue(
-        formData?.workSchedule
+        formData?.workSchedule,
       )}</p>
 <p class="no-indent"><strong>Start Date:</strong> ${ensureValue(
-        formData?.startDate
+        formData?.startDate,
       )}</p>
 <p class="no-indent"><strong>Reporting Manager:</strong> ${ensureValue(
-        formData?.reportingManager
+        formData?.reportingManager,
       )}</p>
 <p class="no-indent"><strong>Department:</strong> ${ensureValue(
-        formData?.department
+        formData?.department,
       )}</p>
 
 <h3 style="margin-top: 20px; margin-bottom: 15px; font-size: 16px; font-weight: bold;">Commission Structure Example:</h3>
-<div style="margin: 1rem 0; padding: 1rem; border-left: 3px solid #24bd68; background: #f8fafc; border-radius: 4px;">
+<div style="margin: 1rem 0; padding: 1rem; border-left: 3px solid #2EAC6D; background: #f8fafc; border-radius: 4px;">
 <p style="margin-bottom: 10px; font-weight: bold;">Daily Example:</p>
 <p style="margin-bottom: 5px;">Payout per billable call: $3</p>
 <p style="margin-bottom: 5px;">Answered Calls: 100</p>
@@ -2862,42 +2827,6 @@ ${
           ? "Service Vertical"
           : "Campaign Vertical"
       }:</strong> ${ensureValue(formData?.vertical)}</p>
-${
-  formData?.type === "FE Closing"
-    ? `
-<div style="margin: 1rem 0; padding: 1.5rem; border-left: 4px solid #24bd68; background: #f8fafc; border-radius: 8px;"> 
-<h3 style="margin-top: 0; margin-bottom: 1.25rem; color: #263149; font-size: 14pt; font-weight: 700; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">Campaign Scope and Deliverables</h3>
-
-<h4 style="margin-top: 1.25rem; margin-bottom: 0.5rem; color: #263149; font-size: 11pt; font-weight: 700;">1. Policy Acquisition Process</h4>
-<p class="no-indent" style="margin-bottom: 0.5rem; font-style: italic;">The sales workflow is defined by a compliant, domestic transfer process:</p>
-<ul style="margin: 0.5rem 0 1rem 0; padding-left: 1.5rem;">
-  <li style="margin-bottom: 0.5rem;"><strong>Lead Transfer:</strong> Qualified prospects are seamlessly transferred from our call centers to our onshore, licensed Final Expense agents.</li>
-  <li><strong>Sales Execution:</strong> Licensed agents manage the complete sales cycle, including the closing of the sale and the secure submission of the final application.</li>
-</ul>
-
-<h4 style="margin-top: 1.25rem; margin-bottom: 0.5rem; color: #263149; font-size: 11pt; font-weight: 700;">2. Compliance and Data Integrity</h4>
-<p class="no-indent" style="margin-bottom: 0.5rem; font-style: italic;">All operations adhere to the highest standards of regulatory compliance:</p>
-<ul style="margin: 0.5rem 0 1rem 0; padding-left: 1.5rem;">
-  <li style="margin-bottom: 0.5rem;"><strong>Signature Protocol:</strong> Agents shall prioritize the use of Voice Signature where available.</li>
-  <li><strong>Electronic Signature Integrity:</strong> When utilizing electronic signature methods (text or email), the licensed agent will maintain strict compliance and shall not fabricate customer emails or phone numbers.</li>
-</ul>
-
-<h4 style="margin-top: 1.25rem; margin-bottom: 0.5rem; color: #263149; font-size: 11pt; font-weight: 700;">3. Customer Retention Services (12-Month Term)</h4>
-<p class="no-indent" style="margin-bottom: 0.5rem; font-style: italic;">A dedicated Retention Team is responsible for maximizing policy persistence:</p>
-<ul style="margin: 0.5rem 0 1rem 0; padding-left: 1.5rem;">
-  <li style="margin-bottom: 0.5rem;"><strong>Onboarding:</strong> The team contacts each customer for a formal onboarding process immediately following policy issuance.</li>
-  <li><strong>Year-Round Contact:</strong> Regular contact is maintained with the policyholder for a full twelve (12) months.</li>
-</ul>
-
-<h4 style="margin-top: 1.25rem; margin-bottom: 0.5rem; color: #263149; font-size: 11pt; font-weight: 700;">4. Policy Guarantee and Liability</h4>
-<ul style="margin: 0.5rem 0 0 0; padding-left: 1.5rem;">
-  <li style="margin-bottom: 0.5rem;"><strong>90-Day Replacement Guarantee:</strong> Any policy that lapses within the first three (3) months of inception will be replaced at no expense to the Agency.</li>
-  <li><strong>Limitation of Liability:</strong> While retention services are provided for a full year, the responsibility for policy replacement is strictly limited to the duration specified in the governing Agreement's terms, not extending beyond the initial three (3) months unless otherwise agreed upon.</li>
-</ul>
-</div>
-`
-    : ""
-}
 <p class="no-indent"><strong>${
         formData?.type === "ACA Health" ? "Service Type" : "Campaign Type"
       }:</strong> ${ensureValue(formData?.type)}</p>
@@ -2906,34 +2835,38 @@ ${
           ? "Service Definition"
           : "Billable Event Definition"
       }:</strong> ${
-        formData?.contractType === "CPL2" || formData?.type === "CPL2"
-          ? `Calls exceeding ${ensureValue(
-              formData?.bufferTime
-            )} seconds call duration.`
-          : formData?.type === "CPL"
+        formData?.type === "CPL"
           ? `Qualified Call lasting at least ${ensureValue(
-              formData?.bufferTime
+              formData?.bufferTime,
             )} seconds (Buffer Time: ${ensureValue(
-              formData?.bufferTime
+              formData?.bufferTime,
             )} seconds - the duration Buyer has to speak with the prospect before the Call becomes billable)`
           : formData?.type === "ACA Health"
-          ? "Agent recruitment and ACA health insurance policy sales"
-          : "The agreed CPA conversion event"
+            ? formData?.acaSubType === "CPL"
+              ? `Qualified Call lasting at least ${ensureValue(formData?.acaCplBufferTime)} seconds from a consumer seeking ACA health insurance`
+              : formData?.acaSubType === "CPA"
+                ? "Verified ACA health insurance enrollment resulting in active policy"
+                : "Agent recruitment and ACA health insurance policy sales"
+            : "The agreed CPA conversion event"
       }</p>
 <p class="no-indent"><strong>${
         formData?.type === "ACA Health" ? "Payment Structure" : "Payout"
       }:</strong> ${
         formData?.type === "ACA Health"
-          ? "See ACA Health payment structure detailed in Section 5.7"
+          ? formData?.acaSubType === "CPL"
+            ? `${formatCurrency(formData?.acaCplPayout)} per Qualified Call (${ensureValue(formData?.acaCplBufferTime)}+ seconds)`
+            : formData?.acaSubType === "CPA"
+              ? `${formatCurrency(formData?.acaCpaPayout)} per Qualified Enrollment`
+              : "See ACA Health partnership payment structure detailed in Section 5.7"
           : formData?.type === "CPA"
-          ? formData?.vertical === "Final Expense"
-            ? formData?.payoutType === "percentage"
-              ? `Level: ${formData?.payoutPercentageLevel}% of annual premium, All Other: ${formData?.payoutPercentageAllOther}% of annual premium`
-              : `Level: ${formatCurrency(
-                  formData?.payoutLevel
-                )}, All Other: ${formatCurrency(formData?.payoutAllOther)}`
-            : `${formatCurrency(formData?.payout)} per Qualified Sale`
-          : `${formatCurrency(formData?.payout)} per Qualified Call`
+            ? formData?.vertical === "Final Expense"
+              ? formData?.payoutType === "percentage"
+                ? `Level: ${formData?.payoutPercentageLevel}% of annual premium, All Other: ${formData?.payoutPercentageAllOther}% of annual premium`
+                : `Level: ${formatCurrency(
+                    formData?.payoutLevel,
+                  )}, All Other: ${formatCurrency(formData?.payoutAllOther)}`
+              : `${formatCurrency(formData?.payout)} per Qualified Sale`
+            : `${formatCurrency(formData?.payout)} per Qualified Call`
       }</p>
 <p class="no-indent"><strong>${
         formData?.type === "ACA Health"
@@ -2944,13 +2877,10 @@ ${
           ? "All agents must be properly licensed to sell ACA health insurance in their respective states"
           : ensureValue(formData?.proofOfConsent)
       }</p>
-${
-  formData?.vertical === "Final Expense" && formData?.type === "CPA"
-    ? `<p class="no-indent"><strong>Chargeback Liability:</strong> ${ensureValue(
-        formData?.chargebackLiability
-      )}</p>`
-    : ""
-}
+${formData?.type === "ACA Health" ? `<p class="no-indent"><strong>Billing Cycle:</strong> ${ensureValue(formData?.acaBillingCycle)}</p>` : ""}
+${formData?.type === "ACA Health" ? `<p class="no-indent"><strong>Chargeback Liability Period:</strong> ${ensureValue(formData?.acaChargebackLiability)}</p>` : ""}
+${formData?.type === "ACA Health" ? `<p class="no-indent"><strong>Agreement Duration:</strong> ${ensureValue(formData?.acaDuration)} months</p>` : ""}
+${formData?.vertical === "Final Expense" && formData?.type === "CPA" ? `<p class="no-indent"><strong>Chargeback Liability:</strong> ${ensureValue(formData?.chargebackLiability)}</p>` : ""}
 <p class="no-indent"><strong>${
         formData?.type === "ACA Health"
           ? "Agency Liability"
@@ -2961,21 +2891,17 @@ ${
           ? "Reporting Requirements"
           : "Export to Sheets"
       }:</strong> ${formData?.exportToSheets ? "Enabled" : "Disabled"}</p>
-${
-  formData?.type === "FE Closing"
-    ? ""
-    : `<p class="no-indent"><strong>${
+<p class="no-indent"><strong>${
         formData?.type === "ACA Health"
           ? "Agency Contact"
           : "Primary Routing Destination"
-      }:</strong> ${ensureValue(formData?.buyer?.phone)}</p>`
-}
+      }:</strong> ${ensureValue(formData?.buyer?.phone)}</p>
 <p class="no-indent"><strong>${
         formData?.type === "ACA Health"
           ? "Compliance & Regulatory Requirements"
           : "Compliance & Targeting Requirements"
       }:</strong></p>
-<div class="requirements-list" style="margin: 1rem 0; padding: 1rem; border-left: 3px solid #24bd68; background: #f8fafc; border-radius: 4px;">
+<div class="requirements-list" style="margin: 1rem 0; padding: 1rem; border-left: 3px solid #2EAC6D; background: #f8fafc; border-radius: 4px;">
 ${requirementsSection}
 </div>
 `
@@ -2983,8 +2909,33 @@ ${requirementsSection}
 </div>
 </div>${
     formData?.type === "ACA Health"
-      ? `
-
+      ? formData?.acaSubType === "CPL"
+        ? `
+<div class="payment-structure">
+<h3>ACA Health CPL Payment Structure:</h3>
+<ul style="margin-bottom: 20px; padding-left: 20px;">
+  <li style="margin-bottom: 8px; line-height: 1.4;">Payout per Qualified Call: ${formatCurrency(formData?.acaCplPayout || "Not Provided")}</li>
+  <li style="margin-bottom: 8px; line-height: 1.4;">Minimum Call Duration (Buffer Time): ${ensureValue(formData?.acaCplBufferTime)} seconds</li>
+  <li style="margin-bottom: 8px; line-height: 1.4;">Billing Cycle: ${ensureValue(formData?.acaBillingCycle)}</li>
+  <li style="margin-bottom: 8px; line-height: 1.4;">Chargeback Liability Period: ${ensureValue(formData?.acaChargebackLiability)}</li>
+  <li style="margin-bottom: 8px; line-height: 1.4;">Agreement Duration: ${ensureValue(formData?.acaDuration)} months</li>
+  <li style="margin-bottom: 8px; line-height: 1.4;">Calls below the ${ensureValue(formData?.acaCplBufferTime)}-second threshold are non-billable</li>
+</ul>
+</div>`
+        : formData?.acaSubType === "CPA"
+          ? `
+<div class="payment-structure">
+<h3>ACA Health CPA Payment Structure:</h3>
+<ul style="margin-bottom: 20px; padding-left: 20px;">
+  <li style="margin-bottom: 8px; line-height: 1.4;">Payout per Qualified Enrollment: ${formatCurrency(formData?.acaCpaPayout || "Not Provided")}</li>
+  <li style="margin-bottom: 8px; line-height: 1.4;">Payment contingent on policy being issued and first premium paid</li>
+  <li style="margin-bottom: 8px; line-height: 1.4;">Billing Cycle: ${ensureValue(formData?.acaBillingCycle)}</li>
+  <li style="margin-bottom: 8px; line-height: 1.4;">Chargeback Liability Period: ${ensureValue(formData?.acaChargebackLiability)}</li>
+  <li style="margin-bottom: 8px; line-height: 1.4;">Agreement Duration: ${ensureValue(formData?.acaDuration)} months</li>
+  <li style="margin-bottom: 8px; line-height: 1.4;">Publisher will replace enrollments where insured fails to pay first premium</li>
+</ul>
+</div>`
+          : `
 <div class="payment-structure">
 <h3>ACA Health Payment Structure:</h3>
 <p style="margin-bottom: 15px;">There are two types of recruited agents with different payment structures:</p>
@@ -2992,7 +2943,7 @@ ${requirementsSection}
 <h4 style="margin-top: 15px; margin-bottom: 10px; font-size: 14px; font-weight: bold;">A. NPN Override Agent:</h4>
 <ul style="margin-bottom: 20px; padding-left: 20px;">
   <li style="margin-bottom: 8px; line-height: 1.4;">For any policy written under an agent's NPN for the NPN override agents, the agency pays the recruiter ${formatCurrency(
-    formData?.acaNpnOverride || "Not Provided"
+    formData?.acaNpnOverride || "Not Provided",
   )} per month for as long as the policy remains active.</li>
   <li style="margin-bottom: 8px; line-height: 1.4;">If the agency writes a new plan or changes a carrier but the policy remains active, the agency will continue paying the recruiter for as long as they are paid by any carrier, not only the initial carrier.</li>
 </ul>
@@ -3000,18 +2951,21 @@ ${requirementsSection}
 <h4 style="margin-top: 15px; margin-bottom: 10px; font-size: 14px; font-weight: bold;">B. Direct Sales Agent:</h4>
 <ul style="margin-bottom: 20px; padding-left: 20px;">
   <li style="margin-bottom: 8px; line-height: 1.4;">For any policy written, the agency pays the recruiter a one-time fee of ${formatCurrency(
-    formData?.acaPerPolicy || "Not Provided"
+    formData?.acaPerPolicy || "Not Provided",
   )} on a weekly basis.</li>
   <li style="margin-bottom: 8px; line-height: 1.4;">For any policy written, the agency pays the recruiter ${formatCurrency(
-    formData?.acaAgentBonus || "Not Provided"
+    formData?.acaAgentBonus || "Not Provided",
   )} per month for as long as the policy remains active. If the agency writes a new plan or changes a carrier but the policy remains active, the agency will continue paying the recruiter for as long as they are paid by any carrier, not only the initial carrier.</li>
   <li style="margin-bottom: 8px; line-height: 1.4;">If a Direct Sales Agent writes a plan under the recruiter's agent's NPN number, then the recruiter will be paid a one-time ${formatCurrency(
-    formData?.acaPerPolicy || "Not Provided"
+    formData?.acaPerPolicy || "Not Provided",
   )} fee per policy weekly, plus $10.00 per month for as long as the policy remains active. If the agency writes a new plan or changes a carrier but the policy remains active, the agency will continue paying the recruiter for as long as they are paid by any carrier, not only the initial carrier.</li>
 </ul>
 
 <h4 style="margin-top: 15px; margin-bottom: 10px; font-size: 14px; font-weight: bold;">Payment Terms:</h4>
 <ul style="margin-bottom: 20px; padding-left: 20px;">
+  <li style="margin-bottom: 8px; line-height: 1.4;">Billing Cycle: ${ensureValue(formData?.acaBillingCycle)}</li>
+  <li style="margin-bottom: 8px; line-height: 1.4;">Chargeback Liability Period: ${ensureValue(formData?.acaChargebackLiability)}</li>
+  <li style="margin-bottom: 8px; line-height: 1.4;">Agreement Duration: ${ensureValue(formData?.acaDuration)} months</li>
   <li style="margin-bottom: 8px; line-height: 1.4;">All payments contingent on policy being issued and paid by carrier</li>
   <li style="margin-bottom: 8px; line-height: 1.4;">Residual payments made "as earned" each month</li>
   <li style="margin-bottom: 8px; line-height: 1.4;">Payment timing: Sales before Dec 8 count for January residuals, after Dec 8 for February residuals</li>
@@ -3230,7 +3184,7 @@ const SignatureSection = React.memo(
     return (
       <section className={`${CARD_CLASSES} ${className}`.trim()}>
         <h2 className={SECTION_TITLE_CLASSES}>
-          <ShieldCheck className="h-5 w-5" style={{ color: "#24bd68" }} />{" "}
+          <ShieldCheck className="h-5 w-5" style={{ color: "#2EAC6D" }} />{" "}
           Digital Signatures
         </h2>
 
@@ -3245,7 +3199,7 @@ const SignatureSection = React.memo(
             }`}
             style={
               signatureMode === "typed"
-                ? { borderColor: "#24bd68", color: "#263149" }
+                ? { borderColor: "#2EAC6D", color: "#263149" }
                 : {}
             }
           >
@@ -3261,7 +3215,7 @@ const SignatureSection = React.memo(
             }`}
             style={
               signatureMode === "drawn"
-                ? { borderColor: "#24bd68", color: "#263149" }
+                ? { borderColor: "#2EAC6D", color: "#263149" }
                 : {}
             }
           >
@@ -3286,7 +3240,7 @@ const SignatureSection = React.memo(
         )}
       </section>
     );
-  }
+  },
 );
 
 const InsertionOrderGenerator = () => {
@@ -3313,273 +3267,32 @@ const InsertionOrderGenerator = () => {
   const [negotiationMode, setNegotiationMode] = useState(false);
   const [negotiationNote, setNegotiationNote] = useState("");
   const [uiError, setUiError] = useState(null);
-  const [uiSuccess, setUiSuccess] = useState(null);
   // Contract status tracked internally but not currently displayed
   const [_contractStatus, setContractStatus] = useState("draft");
 
-  // Shared contract loading state
-  const [isSharedView, setIsSharedView] = useState(false);
-  const [_creatorUid, setCreatorUid] = useState(null);
-  const [_contractId, setLocalContractId] = useState(null);
+  // E-Signature state
+  const [signingContractId, setSigningContractId] = useState(null);
+  const [signingLink, setSigningLink] = useState(null);
+  const [signingLinkCopied, setSigningLinkCopied] = useState(false);
 
-  // Wizard state - must be declared before useEffects that reference them
+  // Detect ?sign= URL parameter on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const signId = params.get("sign");
+    if (signId) {
+      setSigningContractId(signId);
+    }
+  }, []);
+
+  // Wizard state
   const [currentStep, setCurrentStep] = useState(1);
   const [completedSteps, setCompletedSteps] = useState(new Set());
 
-
-
-  // Firebase initialization - must happen before any useEffect that uses db
-  useEffect(() => {
-    if (firebaseReady || typeof window === "undefined") {
-      return;
-    }
-
-    try {
-      const config = window.__firebase_config;
-      if (!config) {
-        throw new Error(
-          "Missing global `__firebase_config`. Ensure it is injected before mounting the app."
-        );
-      }
-
-      const targetName = window.__app_id || undefined;
-      let app = null;
-      const apps = getApps();
-      if (apps.length) {
-        app = targetName
-          ? apps.find((existing) => existing.name === targetName) || apps[0]
-          : apps[0];
-      }
-      if (!app) {
-        app = initializeApp(config, targetName);
-      }
-
-      const dbInstance = getFirestore(app);
-      const authInstance = getAuth(app);
-      setFirebaseObjects({ app, db: dbInstance, auth: authInstance });
-    } catch (error) {
-      setFirebaseError(error.message || "Firebase initialization failed");
-    } finally {
-      setFirebaseReady(true);
-    }
-  }, [firebaseReady]);
-
-  // Derived values from firebaseObjects - declared before useEffects that use them
-  const auth = firebaseObjects?.auth;
-  const db = firebaseObjects?.db;
-
-  // Persistence: Update URL when docPath changes so creator can refresh and stay on contract
-  useEffect(() => {
-    if (docPath && !isSharedView) {
-      const pathParts = docPath.split("/");
-      const usersIdx = pathParts.indexOf("users");
-      const ioIdx = pathParts.indexOf("insertionOrders");
-      const uid = usersIdx !== -1 ? pathParts[usersIdx + 1] : null;
-      const cid = ioIdx !== -1 ? pathParts[ioIdx + 1] : null;
-      
-      if (uid && cid) {
-        const newUrl = `${window.location.origin}${window.location.pathname}?contractId=${cid}&uid=${uid}`;
-        window.history.replaceState({ path: newUrl }, '', newUrl);
-      }
-    }
-  }, [docPath, isSharedView]);
-
-  // Effect to load shared contract from URL
-  useEffect(() => {
-    if (!db || !firebaseReady) return;
-
-    const params = new URLSearchParams(window.location.search);
-    const cid = params.get("contractId");
-    const uid = params.get("uid");
-
-    if (cid && uid && authStatus === "authed") {
-      setIsSharedView(true);
-      setLocalContractId(cid);
-      setCreatorUid(uid);
-
-      const fetchContract = async () => {
-        try {
-          const docRef = doc(db, "users", uid, "insertionOrders", cid);
-          const docSnap = await getDoc(docRef);
-          if (docSnap.exists()) {
-            const data = docSnap.data();
-            setFormData(data.form);
-            setContractText(data.contractText);
-            setDocPath(docRef.path);
-            setContractStatus(data.status || "generated");
-            if (data.signatures) {
-              setBuyerSignatureData(data.signatures.buyer || null);
-              setPublisherSignatureData(data.signatures.publisher || null);
-              if (data.signatures.buyer) setBuyerSignature("drawn");
-              if (data.signatures.publisher) setPublisherSignature("drawn");
-            }
-            setView("contract");
-          } else {
-            setUiError("Contract not found.");
-          }
-        } catch (error) {
-          console.error("Error loading shared contract:", error);
-          setUiError("Failed to load shared contract: " + error.message);
-        }
-      };
-      fetchContract();
-    }
-  }, [db, firebaseReady, authStatus]);
-
-  // Real-time listener for signature updates
-  // Real-time listener for signature updates
-  useEffect(() => {
-    if (!docPath || !db || authStatus !== "authed") return;
-
-    // Remove signature data dependencies to prevent listener churning
-    const unsubscribe = onSnapshot(doc(db, docPath), (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        if (data.signatures) {
-          // Always update state if data exists, let React handle diffing
-          if (data.signatures.buyer) {
-            setBuyerSignatureData(data.signatures.buyer);
-            setBuyerSignature("drawn");
-          }
-          if (data.signatures.publisher) {
-            setPublisherSignatureData(data.signatures.publisher);
-            setPublisherSignature("drawn");
-          }
-        }
-        if (data.status) {
-          setContractStatus(data.status);
-        }
-      }
-    }, (error) => {
-      console.error("Snapshot error:", error);
-    });
-
-    return () => unsubscribe();
-  }, [docPath, db, authStatus]);  // Removed signature data dependencies
-
-  const handleEmailParties = async () => {
-    if (!docPath) {
-      setUiError("Generate a contract first before emailing.");
-      return;
-    }
-
-    setSaving(true);
-    setUiError(null);
-    setUiSuccess(null);
-
-    const pathParts = docPath.split("/");
-    // Look for indices relative to 'users' and 'insertionOrders'
-    const usersIdx = pathParts.indexOf("users");
-    const ioIdx = pathParts.indexOf("insertionOrders");
-
-    const uid = usersIdx !== -1 ? pathParts[usersIdx + 1] : pathParts[1];
-    const cid = ioIdx !== -1 ? pathParts[ioIdx + 1] : pathParts[3];
-
-    // Fallback if index-based split is wrong
-    const shareLink = `${window.location.origin}${window.location.pathname}?contractId=${cid}&uid=${uid}`;
-
-    const sendResendEmail = async (toEmail, partyName) => {
-      const emailHtml = `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
-          <div style="background-color: #0d1130; padding: 20px; text-align: center;">
-            <h1 style="color: white; margin: 0; font-size: 24px;">Contract Signature Request</h1>
-          </div>
-          <div style="padding: 30px; line-height: 1.6; color: #334155;">
-            <p>Hello,</p>
-            <p>A new contract has been generated for <strong>${formData.buyer.companyName}</strong> and <strong>${formData.publisher.companyName}</strong>.</p>
-            <p>As the <strong>${partyName}</strong>, you are requested to review and sign the document.</p>
-            <div style="text-align: center; margin: 40px 0;">
-              <a href="${shareLink}" style="background-color: #24bd68; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Review & Sign Contract</a>
-            </div>
-            <p style="font-size: 14px; color: #64748b;">If the button above doesn't work, copy and paste this link into your browser:</p>
-            <p style="font-size: 14px; color: #3b82f6; word-break: break-all;">${shareLink}</p>
-          </div>
-          <div style="background-color: #f8fafc; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0;">
-            Sent by PPC Legal Suite via Perenroll Contracts
-          </div>
-        </div>
-      `;
-
-      try {
-        const response = await fetch("/api/send-email", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            to: [toEmail],
-            subject: `Action Required: Sign Contract - ${formData.buyer.companyName} / ${formData.publisher.companyName}`,
-            html: emailHtml,
-          }),
-        });
-
-        if (!response.ok) {
-          const errData = await response.json();
-          throw new Error(errData.message || "Failed to send email via backend API");
-        }
-      } catch (err) {
-        console.error(`Error sending to ${toEmail}:`, err);
-        throw err;
-      }
-    };
-
-    try {
-      let sentCount = 0;
-      if (formData.buyer.email) {
-        await sendResendEmail(formData.buyer.email, "Buyer");
-        sentCount++;
-      }
-      if (formData.publisher.email) {
-        await sendResendEmail(formData.publisher.email, "Publisher");
-        sentCount++;
-      }
-
-      if (sentCount > 0) {
-        setUiSuccess(
-          `Successfully sent ${sentCount} email(s) with the signing link.`
-        );
-      } else {
-        setUiError("No email addresses found for Buyer or Publisher.");
-      }
-    } catch (error) {
-      setUiError(
-        "Error sending emails: " +
-          error.message +
-          ". The backend service may be starting up, please try again in a few seconds."
-      );
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // Note: currentStep and completedSteps are declared at the top of the component
-
-  const branding =
-    formData.contractType === "CPL2"
-      ? {
-          isAce: true,
-          primary: "#0d1130", // Deep Blue
-          secondary: "#08c1bd", // Teal
-          tertiary: "#0a0e2d", // Void
-          badgeBg: "#f1f5f9", // Slate-100 (Neutral/Primary-ish) instead of Light Teal
-          badgeText: "Ace Solutions Group",
-          logo: "/ace-logo.png",
-        }
-      : {
-          isAce: false,
-          primary: "#263149", // Slate
-          secondary: "#24bd68", // Green
-          tertiary: "#1ea456", // Darker Green
-          badgeBg: "#f0fdf4", // Light Green
-          badgeText: "PPC Legal Suite",
-          headerLogo: null,
-        };
-
   const buyerFieldsComplete = Object.values(formData.buyer).every((value) =>
-    String(value || "").trim()
+    String(value || "").trim(),
   );
   const publisherFieldsComplete = Object.values(formData.publisher).every(
-    (value) => String(value || "").trim()
+    (value) => String(value || "").trim(),
   );
 
   // Wizard step definitions
@@ -3622,7 +3335,7 @@ const InsertionOrderGenerator = () => {
         component: "ReviewGenerate",
       },
     ],
-    []
+    [],
   );
 
   // Check if current step is complete
@@ -3639,12 +3352,6 @@ const InsertionOrderGenerator = () => {
             formData.contractType === "LLC Operating Agreement"
           ) {
             return true; // Allow manual navigation, don't auto-advance
-          }
-          if (
-            formData.contractType === "CPL" ||
-            formData.contractType === "CPL2"
-          ) {
-            return true;
           }
           return buyerFieldsComplete && publisherFieldsComplete;
         case 3:
@@ -3685,38 +3392,29 @@ const InsertionOrderGenerator = () => {
                   formData.payoutPercentageAllOther))
             );
           }
-          // FE Closing validation
-          if (formData.type === "FE Closing") {
-            const frontendValid =
-              formData.feClosingFrontendCommission !== "" &&
-              parseFloat(formData.feClosingFrontendCommission) >= 0 &&
-              parseFloat(formData.feClosingFrontendCommission) <= 100;
-            const backendValid =
-              formData.feClosingBackendCommission !== "" &&
-              parseFloat(formData.feClosingBackendCommission) >= 0 &&
-              parseFloat(formData.feClosingBackendCommission) <= 100;
-            const chargebackValid =
-              formData.feClosingChargebackReplacement !== "";
-            return frontendValid && backendValid && chargebackValid;
-          }
           return (
             formData.vertical &&
             formData.type &&
             (formData.type === "ACA Health"
-              ? formData.acaNpnOverride &&
-                formData.acaPerPolicy &&
-                formData.acaAgentBonus
+              ? formData.acaSubType === "Partnership"
+                ? formData.acaNpnOverride &&
+                  formData.acaPerPolicy &&
+                  formData.acaAgentBonus
+                : formData.acaSubType === "CPL"
+                  ? formData.acaCplPayout
+                  : formData.acaSubType === "CPA"
+                    ? formData.acaCpaPayout
+                    : false
               : formData.contractType === "LLC Operating Agreement" ||
-                formData.contractType ===
-                  "Auto Insurance LLC Operating Agreement"
-              ? true // No payout required for LLC agreements
-              : formData.payout)
+                  formData.contractType ===
+                    "Auto Insurance LLC Operating Agreement"
+                ? true // No payout required for LLC agreements
+                : formData.payout)
           );
         case 4:
-          // Skip step 4 (Requirements) for ACA Health campaigns, FE Closing, Employment Contracts, and LLC Operating Agreements
+          // Skip step 4 (Requirements) for ACA Health campaigns, Employment Contracts, and LLC Operating Agreements
           if (
             formData.type === "ACA Health" ||
-            formData.type === "FE Closing" ||
             formData.type === "Employment Contract" ||
             formData.type === "Auto Insurance LLC Operating Agreement" ||
             formData.vertical === "LLC Operating Agreement"
@@ -3747,7 +3445,7 @@ const InsertionOrderGenerator = () => {
           return false;
       }
     },
-    [formData, buyerFieldsComplete, publisherFieldsComplete]
+    [formData, buyerFieldsComplete, publisherFieldsComplete],
   );
 
   // Auto-progression effect
@@ -3776,8 +3474,8 @@ const InsertionOrderGenerator = () => {
 
         // Skip step 4 (Requirements) if ACA Health is selected
         let nextStep = currentStep + 1;
-        if (currentStep === 2 && formData.type === "ACA Health") {
-          nextStep = 5; // Skip to Datapass step (step 5)
+        if (currentStep === 3 && formData.type === "ACA Health") {
+          nextStep = 5; // Skip Requirements, go to Datapass step
         }
 
         setCurrentStep(nextStep);
@@ -3793,7 +3491,43 @@ const InsertionOrderGenerator = () => {
     formData.vertical,
   ]);
 
-  // Note: Firebase initialization useEffect and auth/db declarations moved to top of component
+  useEffect(() => {
+    if (firebaseReady || typeof window === "undefined") {
+      return;
+    }
+
+    try {
+      const config = window.__firebase_config;
+      if (!config) {
+        throw new Error(
+          "Missing global `__firebase_config`. Ensure it is injected before mounting the app.",
+        );
+      }
+
+      const targetName = window.__app_id || undefined;
+      let app = null;
+      const apps = getApps();
+      if (apps.length) {
+        app = targetName
+          ? apps.find((existing) => existing.name === targetName) || apps[0]
+          : apps[0];
+      }
+      if (!app) {
+        app = initializeApp(config, targetName);
+      }
+
+      const db = getFirestore(app);
+      const auth = getAuth(app);
+      setFirebaseObjects({ app, db, auth });
+    } catch (error) {
+      setFirebaseError(error.message || "Firebase initialization failed");
+    } finally {
+      setFirebaseReady(true);
+    }
+  }, [firebaseReady]);
+
+  const auth = firebaseObjects?.auth;
+  const db = firebaseObjects?.db;
 
   useEffect(() => {
     if (!auth) {
@@ -3815,15 +3549,13 @@ const InsertionOrderGenerator = () => {
       if (!hasAttemptedCustom) {
         hasAttemptedCustom = true;
         const token = window.__initial_auth_token;
-        if (token && token.split('.').length === 3) {
+        if (token) {
           try {
             await signInWithCustomToken(auth, token);
             return;
           } catch (error) {
             console.warn("Custom token authentication failed:", error);
           }
-        } else if (token && token !== "REPLACE_WITH_CUSTOM_TOKEN_FROM_YOUR_SECURE_BACKEND") {
-          console.warn("Custom token ignored: Invalid format (JWT must have 3 segments). Found:", token);
         }
       }
 
@@ -3837,12 +3569,10 @@ const InsertionOrderGenerator = () => {
         }
       }
 
-      if (!user) {
-        setAuthStatus("error");
-        setAuthError(
-          "Authentication failed. Please check your internet connection or Firebase configuration."
-        );
-      }
+      setAuthStatus("error");
+      setAuthError(
+        "Authentication failed. Provide `window.__initial_auth_token` or enable anonymous access.",
+      );
     });
 
     return () => unsubscribe();
@@ -3932,7 +3662,7 @@ const InsertionOrderGenerator = () => {
         !formData.compensationType
       ) {
         setUiError(
-          "Please complete all employment contract fields before generating the contract."
+          "Please complete all employment contract fields before generating the contract.",
         );
         return;
       }
@@ -3942,13 +3672,13 @@ const InsertionOrderGenerator = () => {
         !formData.hourlyRate
       ) {
         setUiError(
-          "Please provide an hourly rate for the selected compensation type."
+          "Please provide an hourly rate for the selected compensation type.",
         );
         return;
       }
       if (formData.compensationType === "Salary" && !formData.salaryAmount) {
         setUiError(
-          "Please provide a salary amount for the selected compensation type."
+          "Please provide a salary amount for the selected compensation type.",
         );
         return;
       }
@@ -3958,20 +3688,36 @@ const InsertionOrderGenerator = () => {
         !formData.commissionRate
       ) {
         setUiError(
-          "Please provide a commission rate for the selected compensation type."
+          "Please provide a commission rate for the selected compensation type.",
         );
         return;
       }
     } else if (formData.type === "ACA Health") {
-      if (
-        !formData.acaNpnOverride ||
-        !formData.acaPerPolicy ||
-        !formData.acaAgentBonus
-      ) {
-        setUiError(
-          "Please provide all ACA Health payment amounts before generating the contract."
-        );
-        return;
+      if (formData.acaSubType === "Partnership") {
+        if (
+          !formData.acaNpnOverride ||
+          !formData.acaPerPolicy ||
+          !formData.acaAgentBonus
+        ) {
+          setUiError(
+            "Please provide all ACA Partnership payment amounts (NPN Override, Per Policy, Agent Bonus) before generating.",
+          );
+          return;
+        }
+      } else if (formData.acaSubType === "CPL") {
+        if (!formData.acaCplPayout) {
+          setUiError(
+            "Please provide the payout per qualified call before generating.",
+          );
+          return;
+        }
+      } else if (formData.acaSubType === "CPA") {
+        if (!formData.acaCpaPayout) {
+          setUiError(
+            "Please provide the payout per qualified enrollment before generating.",
+          );
+          return;
+        }
       }
     } else if (
       formData.vertical === "Final Expense" &&
@@ -3993,39 +3739,8 @@ const InsertionOrderGenerator = () => {
         (!formData.payoutPercentageLevel || !formData.payoutPercentageAllOther)
       ) {
         setUiError(
-          "Please provide both Level and All Other percentage values."
+          "Please provide both Level and All Other percentage values.",
         );
-        return;
-      }
-    } else if (formData.type === "FE Closing") {
-      // Validate FE Closing specific fields
-      const frontendCommission = parseFloat(
-        formData.feClosingFrontendCommission
-      );
-      const backendCommission = parseFloat(formData.feClosingBackendCommission);
-
-      if (
-        isNaN(frontendCommission) ||
-        frontendCommission < 0 ||
-        frontendCommission > 100
-      ) {
-        setUiError(
-          "Please provide a valid Frontend Commission percentage (0-100%)."
-        );
-        return;
-      }
-      if (
-        isNaN(backendCommission) ||
-        backendCommission < 0 ||
-        backendCommission > 100
-      ) {
-        setUiError(
-          "Please provide a valid Backend Commission percentage (0-100%)."
-        );
-        return;
-      }
-      if (!formData.feClosingChargebackReplacement) {
-        setUiError("Please select a Chargeback Replacement Period.");
         return;
       }
     } else if (
@@ -4034,7 +3749,7 @@ const InsertionOrderGenerator = () => {
       formData.type !== "Auto Insurance LLC Operating Agreement"
     ) {
       setUiError(
-        "Please provide a payout value before generating the contract."
+        "Please provide a payout value before generating the contract.",
       );
       return;
     }
@@ -4042,12 +3757,10 @@ const InsertionOrderGenerator = () => {
     if (
       formData.contractType !== "Auto Insurance LLC Operating Agreement" &&
       formData.contractType !== "LLC Operating Agreement" &&
-      formData.contractType !== "CPL" &&
-      formData.contractType !== "CPL2" &&
       (!buyerFieldsComplete || !publisherFieldsComplete)
     ) {
       setUiError(
-        "Complete Buyer and Publisher company details before generating the contract."
+        "Complete Buyer and Publisher company details before generating the contract.",
       );
       return;
     }
@@ -4059,7 +3772,7 @@ const InsertionOrderGenerator = () => {
       const generatedText = buildContractTemplate(
         formData,
         buyerSignatureData,
-        publisherSignatureData
+        publisherSignatureData,
       );
 
       const payload = {
@@ -4084,18 +3797,38 @@ const InsertionOrderGenerator = () => {
         brokerLiabilityAcknowledged: formData.brokerLiability,
         overseasPublisherClauseIncluded: true,
         userId: user.uid,
-        signatures: {
-          buyer: buyerSignatureData || null,
-          publisher: publisherSignatureData || null,
-        },
       };
 
       setSaving(true);
+
+      // Include e-signature metadata directly in the main document
+      const unsignedHtml = buildContractTemplate(formData, null, null);
+      const partyLabels = formData.type === "ACA Health"
+        ? (formData.acaSubType === "CPL" || formData.acaSubType === "CPA"
+            ? { buyer: "Buyer", publisher: "Publisher" }
+            : { buyer: "ACA Insurance Agency", publisher: "Agent Recruiter" })
+        : formData.type === "Employment Contract"
+          ? { buyer: "Employer", publisher: "Employee" }
+          : { buyer: "Buyer/Broker", publisher: "Publisher" };
+
+      payload.signingData = {
+        contractHtml: unsignedHtml,
+        status: "awaiting_buyer",
+        buyerSignature: null,
+        publisherSignature: null,
+        partyLabels,
+      };
+
       const docRef = await addDoc(
         collection(db, "users", user.uid, "insertionOrders"),
-        payload
+        payload,
       );
       setDocPath(docRef.path);
+
+      // Signing link uses userId:docId format to reference this user's document
+      const link = `${window.location.origin}${window.location.pathname}?sign=${user.uid}:${docRef.id}`;
+      setSigningLink(link);
+
       setContractText(generatedText);
       setNegotiationHistory([]);
       setContractStatus("generated");
@@ -4136,26 +3869,24 @@ const InsertionOrderGenerator = () => {
       return;
     }
 
-    // Re-generate the contract HTML with the current signatures
-    const signedContractHtml = buildContractTemplate(
-      formData,
-      buyerSignatureData,
-      publisherSignatureData
-    );
+    // Get the contract content element
+    const contractElement = document.querySelector(".contract-body");
+    if (!contractElement) {
+      setUiError("Contract content not found. Please try again.");
+      return;
+    }
 
     // Configure PDF options
     const opt = {
-      margin: 0.5,
+      margin: [0.3, 0.3, 0.3, 0.3],
       filename: `ppc-insertion-order-${
         formData.buyer.companyName || "buyer"
       }-${Date.now()}.pdf`,
-      pagebreak: { mode: ["avoid-all", "css", "legacy"] },
       image: { type: "jpeg", quality: 0.98 },
       html2canvas: {
         scale: 2,
         useCORS: true,
         letterRendering: true,
-        logging: false,
       },
       jsPDF: {
         unit: "in",
@@ -4164,28 +3895,8 @@ const InsertionOrderGenerator = () => {
       },
     };
 
-    // Generate and download PDF directly from string content
-    // This avoids issues with DOM positioning and recursion
-    html2pdf()
-      .set(opt)
-      .from(signedContractHtml)
-      .toPdf()
-      .get('pdf')
-      .then((pdf) => {
-        const totalPages = pdf.internal.getNumberOfPages();
-        for (let i = 1; i <= totalPages; i++) {
-          pdf.setPage(i);
-          // Add a tiny bit of padding to the bottom to prevent clipping
-          pdf.setFontSize(8);
-          pdf.setTextColor(150);
-          pdf.text(`Page ${i} of ${totalPages}`, 0.5, 10.75);
-        }
-      })
-      .save()
-      .catch((err) => {
-        console.error("PDF generation failed:", err);
-        setUiError("Failed to generate PDF. Please try again.");
-      });
+    // Generate and download PDF
+    html2pdf().set(opt).from(contractElement).save();
   };
 
   // CSV download function - kept for future use
@@ -4218,7 +3929,7 @@ const InsertionOrderGenerator = () => {
     ];
     const csvContent = [headers, ...rows]
       .map((row) =>
-        row.map((cell) => `"${(cell || "").replace(/"/g, '""')}"`).join(",")
+        row.map((cell) => `"${(cell || "").replace(/"/g, '""')}"`).join(","),
       )
       .join("\n");
 
@@ -4231,75 +3942,6 @@ const InsertionOrderGenerator = () => {
     anchor.click();
     document.body.removeChild(anchor);
     URL.revokeObjectURL(url);
-  };
-
-  const handleSubmitSignature = async (party, signatureData) => {
-    if (!docPath || !db) {
-      setUiError("Contract document not found. Generate it first.");
-      return;
-    }
-
-    try {
-      setSaving(true);
-      setUiError(null);
-
-      // Read-Modify-Write pattern to ensure 100% safety against overwrites
-      const docRef = doc(db, docPath);
-      const docSnap = await getDoc(docRef);
-      
-      if (!docSnap.exists()) {
-        throw new Error("Document does not exist");
-      }
-
-      const currentData = docSnap.data();
-      const currentSignatures = currentData.signatures || {};
-      
-      // Merge new signature into existing
-      const newSignatures = {
-        ...currentSignatures,
-        [party]: signatureData
-      };
-
-      // Check finalization condition based on the MERGED data
-      const otherParty = party === "buyer" ? "publisher" : "buyer";
-      const willBeFinalized = !!newSignatures[party] && !!newSignatures[otherParty];
-
-      const updateData = {
-        updatedAt: serverTimestamp(),
-        signatures: newSignatures
-      };
-
-      if (willBeFinalized) {
-        updateData.status = "finalized";
-        updateData.signedAt = serverTimestamp();
-      }
-
-      // Update with the full signatures object
-      await updateDoc(docRef, updateData);
-
-      // Update local state
-      if (party === "buyer") {
-        setBuyerSignatureData(signatureData);
-        setBuyerSignature("drawn");
-      } else {
-        setPublisherSignatureData(signatureData);
-        setPublisherSignature("drawn");
-      }
-
-      setUiSuccess(`${party.charAt(0).toUpperCase() + party.slice(1)} signature saved successfully!`);
-      
-      if (willBeFinalized) {
-        setContractStatus("finalized");
-      }
-    } catch (error) {
-      console.error("Error saving signature:", error);
-      setUiError("Failed to save signature: " + (error.permission ? "Permission denied. Please ensure you have access to sign this document." : error.message));
-    } finally {
-      setSaving(false);
-    }
-  };
-      setSaving(false);
-    }
   };
 
   const handleRequestNegotiation = async () => {
@@ -4340,13 +3982,9 @@ const InsertionOrderGenerator = () => {
       return;
     }
 
-    // Check if we have signatures in either format (drawn data or typed text)
-    const hasBuyerSig = buyerSignatureData || buyerSignature.trim();
-    const hasPubSig = publisherSignatureData || publisherSignature.trim();
-
-    if (!hasBuyerSig || !hasPubSig) {
+    if (!buyerSignature.trim() || !publisherSignature.trim()) {
       setUiError(
-        "Both the Buyer/Broker and Publisher signatures are required to finalize."
+        "Both the Buyer/Broker and Publisher signatures are required to finalize.",
       );
       return;
     }
@@ -4358,8 +3996,8 @@ const InsertionOrderGenerator = () => {
         updatedAt: serverTimestamp(),
         signedAt: serverTimestamp(),
         signatures: {
-          buyer: buyerSignatureData || buyerSignature.trim(),
-          publisher: publisherSignatureData || publisherSignature.trim(),
+          buyer: buyerSignature.trim(),
+          publisher: publisherSignature.trim(),
         },
       });
       setUiError(null);
@@ -4391,7 +4029,7 @@ const InsertionOrderGenerator = () => {
         <div className="flex items-center gap-3 rounded-full border border-slate-200 bg-white px-6 py-3 shadow-lg">
           <Loader2
             className="h-5 w-5 animate-spin"
-            style={{ color: "#24bd68" }}
+            style={{ color: "#2EAC6D" }}
           />
           <span className="text-sm font-medium text-slate-700">
             Connecting to secure workspace...
@@ -4415,38 +4053,34 @@ const InsertionOrderGenerator = () => {
     );
   }
 
+  // If a signing contract ID is in the URL, render the signing page
+  if (signingContractId) {
+    return (
+      <>
+        <style>{GLOBAL_STYLE_BLOCK}</style>
+        <ContractSigningPage
+          contractId={signingContractId}
+          db={db}
+          auth={auth}
+        />
+      </>
+    );
+  }
+
   return (
-    <div className="app-shell h-screen overflow-hidden flex flex-col bg-gradient-to-br from-slate-50 to-indigo-50">
+    <div className="app-shell min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50">
       <style>{GLOBAL_STYLE_BLOCK}</style>
       <div className="flex-1 flex flex-col">
         {/* Header - HIDDEN for contract view */}
         {view === "form" && (
           <div className="flex-shrink-0 text-center py-2">
-            <span
-              className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold uppercase tracking-[0.2em]"
-              style={{
-                backgroundColor: branding.badgeBg,
-                color: branding.primary,
-              }}
-            >
-              {branding.isAce ? (
-                <img
-                  src={branding.logo}
-                  alt="Logo"
-                  className="h-24 w-auto object-contain"
-                />
-              ) : (
-                <>
-                  <ShieldCheck
-                    className="h-3 w-3"
-                    style={{ color: branding.secondary }}
-                  />{" "}
-                  {branding.badgeText}
-                </>
-              )}
-            </span>
+            <img
+              src="/pvnvoice.png"
+              alt="PVNVoice"
+              style={{ height: "36px", margin: "0 auto 4px" }}
+            />
             <h1 className="mt-1 text-lg font-black text-slate-900">
-              Insertion Order Generator
+              Agreement Generator
             </h1>
             <p className="text-xs text-slate-600">
               Create compliant contracts in 5 simple steps
@@ -4460,12 +4094,6 @@ const InsertionOrderGenerator = () => {
           </div>
         )}
 
-        {uiSuccess && (
-          <div className="flex-shrink-0 mx-4 mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-            {uiSuccess}
-          </div>
-        )}
-
         <div className="flex-1 flex flex-col">
           {view === "form" ? (
             <WizardInterface
@@ -4474,32 +4102,9 @@ const InsertionOrderGenerator = () => {
               completedSteps={completedSteps}
               setCompletedSteps={setCompletedSteps}
               wizardSteps={
-                formData.contractType === "CPL2"
-                  ? [
-                      {
-                        id: 1,
-                        title: "Contract Type",
-                        description: "Select template",
-                      },
-                      {
-                        id: 2,
-                        title: "Party Info",
-                        description: "Buyer & Publisher details",
-                      },
-                      {
-                        id: 3,
-                        title: "Campaign & Compliance",
-                        description: "Term, Payouts & Compliance",
-                      },
-                      {
-                        id: 4,
-                        title: "Review & Generate",
-                        description: "Finalize contract",
-                      },
-                    ]
-                  : formData.contractType ===
-                      "Auto Insurance LLC Operating Agreement" ||
-                    formData.contractType === "LLC Operating Agreement"
+                formData.contractType ===
+                  "Auto Insurance LLC Operating Agreement" ||
+                formData.contractType === "LLC Operating Agreement"
                   ? WIZARD_STEPS.map((step) => {
                       if (step.id === 2) {
                         return {
@@ -4523,7 +4128,7 @@ const InsertionOrderGenerator = () => {
                         };
                       }
                       return step;
-                    }).filter((step) => step.id !== 5)
+                    }).filter((step) => step.id !== 5) // Remove Datapass step for LLC
                   : WIZARD_STEPS
               }
               formData={formData}
@@ -4536,7 +4141,6 @@ const InsertionOrderGenerator = () => {
               buyerComplete={buyerFieldsComplete}
               publisherComplete={publisherFieldsComplete}
               isStepComplete={isStepComplete}
-              branding={branding}
             />
           ) : (
             <ContractView
@@ -4559,30 +4163,20 @@ const InsertionOrderGenerator = () => {
               setPublisherSignature={setPublisherSignature}
               setBuyerSignatureData={setBuyerSignatureData}
               setPublisherSignatureData={setPublisherSignatureData}
-              docPath={docPath}
               signatureMode={signatureMode}
               setSignatureMode={setSignatureMode}
+              signingLink={signingLink}
+              signingLinkCopied={signingLinkCopied}
+              setSigningLinkCopied={setSigningLinkCopied}
               onReset={() => {
                 resetContractState();
                 setView("form");
                 setCurrentStep(1);
                 setCompletedSteps(new Set());
-                if (isSharedView) {
-                  window.history.replaceState(
-                    {},
-                    document.title,
-                    window.location.pathname
-                  );
-                  setIsSharedView(false);
-                }
               }}
               onPrint={handlePrintContract}
               onDownload={handleDownloadContract}
               onDownloadPDF={handleDownloadPDF}
-              onEmailParties={handleEmailParties}
-              onSubmitSignature={handleSubmitSignature}
-              isSharedView={isSharedView}
-              contractStatus={_contractStatus}
             />
           )}
         </div>
@@ -4608,7 +4202,6 @@ const WizardInterface = ({
   buyerComplete,
   publisherComplete,
   isStepComplete,
-  branding,
 }) => {
   const currentStepData = wizardSteps.find((step) => step.id === currentStep);
 
@@ -4632,24 +4225,18 @@ const WizardInterface = ({
                     isCompleted
                       ? "text-white"
                       : isCurrent
-                      ? "text-white"
-                      : isAccessible
-                      ? "border-slate-300 bg-white text-slate-600"
-                      : "border-slate-200 bg-slate-100 text-slate-400"
+                        ? "text-white"
+                        : isAccessible
+                          ? "border-slate-300 bg-white text-slate-600"
+                          : "border-slate-200 bg-slate-100 text-slate-400"
                   }
                 `}
                   style={
                     isCompleted
-                      ? {
-                          borderColor: branding.primary,
-                          backgroundColor: branding.primary,
-                        }
+                      ? { borderColor: "#143B5E", backgroundColor: "#143B5E" }
                       : isCurrent
-                      ? {
-                          borderColor: branding.primary,
-                          backgroundColor: branding.primary,
-                        }
-                      : {}
+                        ? { borderColor: "#2EAC6D", backgroundColor: "#2EAC6D" }
+                        : {}
                   }
                 >
                   {isCompleted ? <CheckCircle2 className="h-3 w-3" /> : step.id}
@@ -4659,7 +4246,7 @@ const WizardInterface = ({
                     className={`text-xs font-medium ${
                       isCurrent ? "" : "text-slate-600"
                     }`}
-                    style={isCurrent ? { color: branding.primary } : {}}
+                    style={isCurrent ? { color: "#2EAC6D" } : {}}
                   >
                     {step.title}
                   </div>
@@ -4670,9 +4257,7 @@ const WizardInterface = ({
                   className={`mx-1 h-0.5 w-8 ${
                     isCompleted ? "" : "bg-slate-200"
                   }`}
-                  style={
-                    isCompleted ? { backgroundColor: branding.primary } : {}
-                  }
+                  style={isCompleted ? { backgroundColor: "#143B5E" } : {}}
                 />
               )}
             </div>
@@ -4726,24 +4311,9 @@ const WizardInterface = ({
           <CampaignDetailsStep
             formData={formData}
             onFieldChange={onFieldChange}
-            onToggleArray={onToggleArray} // Pass toggle for compliance options in merged view
           />
         );
       case 4:
-        // CPL2 logic: Step 4 is Review & Generate
-        if (formData.contractType === "CPL2") {
-          return (
-            <ReviewGenerateStep
-              formData={formData}
-              onGenerate={onGenerate}
-              generating={generating}
-              saving={saving}
-              buyerComplete={buyerComplete}
-              publisherComplete={publisherComplete}
-              branding={branding}
-            />
-          );
-        }
         // For LLC agreements, step 4 is Review & Generate
         if (
           formData.contractType === "Auto Insurance LLC Operating Agreement" ||
@@ -4757,7 +4327,6 @@ const WizardInterface = ({
               saving={saving}
               buyerComplete={buyerComplete}
               publisherComplete={publisherComplete}
-              branding={branding}
             />
           );
         }
@@ -4769,8 +4338,6 @@ const WizardInterface = ({
           />
         );
       case 5:
-        // Step 5 removed for CPL2
-
         return (
           <DatapassConfigStep
             formData={formData}
@@ -4811,15 +4378,14 @@ const WizardInterface = ({
             </p>
           </div>
 
-          <div className="flex-1 overflow-y-auto">{renderStepContent()}</div>
+          <div className="flex-1 overflow-y-auto p-1">
+            {renderStepContent()}
+          </div>
 
           {/* Navigation - ALWAYS VISIBLE */}
           <div
             className="flex-shrink-0 flex items-center justify-between border-t-2 px-4 py-3"
-            style={{
-              borderColor: branding.primary,
-              backgroundColor: branding.isAce ? "#f0f9ff" : "#f0fdf4",
-            }}
+            style={{ borderColor: "#5BC894", backgroundColor: "#F0FAF5" }}
           >
             <button
               type="button"
@@ -4835,13 +4401,17 @@ const WizardInterface = ({
                   prevStep = 1; // Skip back to Contract Type for LLC
                 } else if (
                   currentStep === 4 &&
-                  (formData.type === "ACA Health" ||
-                    formData.type === "Employment Contract" ||
+                  (formData.type === "Employment Contract" ||
                     formData.type ===
                       "Auto Insurance LLC Operating Agreement" ||
                     formData.vertical === "LLC Operating Agreement")
                 ) {
-                  prevStep = 2; // Skip back to Campaign Details
+                  prevStep = 2; // Skip back to Party Info for non-ACA types
+                } else if (
+                  currentStep === 4 &&
+                  formData.type === "ACA Health"
+                ) {
+                  prevStep = 3; // Go back to Campaign Details for ACA Health
                 } else if (
                   currentStep === 3 &&
                   (formData.type === "ACA Health" ||
@@ -4858,33 +4428,21 @@ const WizardInterface = ({
                   formData.type !== "Auto Insurance LLC Operating Agreement" &&
                   formData.vertical !== "LLC Operating Agreement"
                 ) {
-                  if (formData.contractType === "CPL2") {
-                    prevStep = 3;
-                  } else {
-                    prevStep = 3; // Go back to Requirements step for regular campaigns
-                  }
+                  prevStep = 3; // Go back to Requirements step for regular campaigns
                 }
                 setCurrentStep(prevStep);
               }}
               disabled={false}
               className="inline-flex items-center gap-2 rounded-lg border-2 bg-white px-4 py-2 text-sm font-bold shadow-lg transition"
-              style={{
-                borderColor: branding.primary,
-                color: branding.primary,
-              }}
-              onMouseEnter={(e) =>
-                (e.target.style.backgroundColor = branding.badgeBg)
-              }
+              style={{ borderColor: "#5BC894", color: "#143B5E" }}
+              onMouseEnter={(e) => (e.target.style.backgroundColor = "#F0FAF5")}
               onMouseLeave={(e) => (e.target.style.backgroundColor = "white")}
             >
               <ArrowLeft className="h-5 w-5" />
               PREVIOUS
             </button>
 
-            <div
-              className="text-sm font-bold"
-              style={{ color: branding.primary }}
-            >
+            <div className="text-sm font-bold" style={{ color: "#143B5E" }}>
               Step {currentStep} of {wizardSteps.length}
             </div>
 
@@ -4894,17 +4452,21 @@ const WizardInterface = ({
                 onClick={() => {
                   if (isStepComplete(currentStep)) {
                     setCompletedSteps(
-                      (prev) => new Set([...prev, currentStep])
+                      (prev) => new Set([...prev, currentStep]),
                     );
 
-                    // Skip step 2 (Party Info) for LLC agreements, step 3 (Requirements) for others
+                    // Skip step 3 for Employment Contracts only, step 4 (Requirements) for ACA Health
                     let nextStep = currentStep + 1;
                     if (
                       currentStep === 2 &&
-                      (formData.type === "ACA Health" ||
-                        formData.type === "Employment Contract")
+                      formData.type === "Employment Contract"
                     ) {
-                      nextStep = 4; // Skip to Datapass step for ACA Health and Employment Contracts
+                      nextStep = 4; // Skip Campaign Details for Employment Contracts
+                    } else if (
+                      currentStep === 3 &&
+                      formData.type === "ACA Health"
+                    ) {
+                      nextStep = 5; // Skip Requirements for ACA Health (go to Datapass)
                     }
 
                     setCurrentStep(nextStep);
@@ -4912,14 +4474,14 @@ const WizardInterface = ({
                 }}
                 disabled={!isStepComplete(currentStep)}
                 className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold text-white shadow-lg transition disabled:cursor-not-allowed disabled:opacity-50"
-                style={{ backgroundColor: branding.primary }}
+                style={{ backgroundColor: "#143B5E" }}
                 onMouseEnter={(e) =>
                   !e.target.disabled &&
-                  (e.target.style.backgroundColor = branding.secondary)
+                  (e.target.style.backgroundColor = "#142D49")
                 }
                 onMouseLeave={(e) =>
                   !e.target.disabled &&
-                  (e.target.style.backgroundColor = branding.primary)
+                  (e.target.style.backgroundColor = "#143B5E")
                 }
               >
                 NEXT
@@ -4943,12 +4505,6 @@ const ContractTypeStep = ({ formData, onFieldChange }) => {
       featured: true,
     },
     {
-      value: "FE Closing",
-      label: "FE Closing",
-      description: "Final expense call transfer and closing services",
-      featured: true,
-    },
-    {
       value: "Employment Contract",
       label: "Employment Agreement",
       description: "Employee contracts and agreements",
@@ -4964,12 +4520,6 @@ const ContractTypeStep = ({ formData, onFieldChange }) => {
       description: "Pay per lead generation campaigns",
     },
     {
-      value: "CPL2",
-      label: "CPL 2 (Ace Solutions)",
-      description: "Ace Solutions Group CPL Contract",
-      featured: true,
-    },
-    {
       value: "CPA",
       label: "Cost Per Acquisition (CPA)",
       description: "Pay per completed sale campaigns",
@@ -4977,7 +4527,7 @@ const ContractTypeStep = ({ formData, onFieldChange }) => {
   ];
 
   return (
-    <div className="h-full flex flex-col max-h-full overflow-y-auto p-2">
+    <div className="h-full flex flex-col max-h-full overflow-y-auto">
       <div className="flex-shrink-0 text-center mb-2">
         <h3 className="text-sm font-semibold text-slate-800 mb-1">
           Select Contract Type
@@ -4988,21 +4538,23 @@ const ContractTypeStep = ({ formData, onFieldChange }) => {
       </div>
 
       <div className="flex-1">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div className="grid gap-1.5">
           {contractTypes.map((type) => (
             <div
               key={type.value}
               className={`p-2 rounded-lg border-2 cursor-pointer transition-all ${
                 formData.contractType === type.value
-                  ? "bg-green-50"
+                  ? ""
                   : type.featured
-                  ? "border-green-300 bg-green-50 hover:border-green-400 hover:bg-green-100"
-                  : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"
+                    ? "hover:bg-slate-50"
+                    : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"
               }`}
               style={
                 formData.contractType === type.value
-                  ? { borderColor: "#24bd68" }
-                  : {}
+                  ? { borderColor: "#2EAC6D", backgroundColor: "#F0FAF5" }
+                  : type.featured
+                    ? { borderColor: "#5BC894", backgroundColor: "#F0FAF5" }
+                    : {}
               }
               onClick={() => {
                 onFieldChange("contractType", type.value);
@@ -5010,18 +4562,13 @@ const ContractTypeStep = ({ formData, onFieldChange }) => {
                 if (type.value === "Auto Insurance LLC Operating Agreement") {
                   onFieldChange(
                     "type",
-                    "Auto Insurance LLC Operating Agreement"
+                    "Auto Insurance LLC Operating Agreement",
                   );
                   onFieldChange("vertical", "LLC Operating Agreement");
-                } else if (type.value === "FE Closing") {
-                  onFieldChange("type", "FE Closing");
-                  onFieldChange("vertical", "Final Expense");
                 } else if (type.value === "Employment Contract") {
                   onFieldChange("type", "Employment Contract");
                 } else if (type.value === "ACA Health") {
                   onFieldChange("type", "ACA Health");
-                } else if (type.value === "CPL2") {
-                  onFieldChange("type", "CPL2");
                 } else {
                   onFieldChange("type", type.value);
                 }
@@ -5037,7 +4584,7 @@ const ContractTypeStep = ({ formData, onFieldChange }) => {
                     }`}
                     style={
                       formData.contractType === type.value
-                        ? { borderColor: "#24bd68", backgroundColor: "#24bd68" }
+                        ? { borderColor: "#2EAC6D", backgroundColor: "#2EAC6D" }
                         : {}
                     }
                   >
@@ -5054,7 +4601,7 @@ const ContractTypeStep = ({ formData, onFieldChange }) => {
                     {type.featured && (
                       <span
                         className="px-1.5 py-0.5 text-xs font-bold text-white rounded-full"
-                        style={{ backgroundColor: "#24bd68" }}
+                        style={{ backgroundColor: "#2EAC6D" }}
                       >
                         NEW
                       </span>
@@ -5076,100 +4623,6 @@ const ContractTypeStep = ({ formData, onFieldChange }) => {
 const PartyInfoStep = ({ formData, onPartyFieldChange }) => {
   const makePartyInputId = (party, field) => `${party}-${field}`;
 
-  if (formData.contractType === "CPL2") {
-    const renderCompactSection = (partyKey, label) => {
-      const partyData = formData[partyKey];
-      return (
-        <div className="space-y-2">
-          <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 pb-1">
-            {label}
-          </h3>
-          <div className="space-y-1.5">
-            <div>
-              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-0.5">
-                Company
-              </label>
-              <input
-                type="text"
-                className="w-full rounded border border-slate-200 px-2 py-0.5 text-xs focus:border-indigo-500 focus:outline-none"
-                value={partyData.companyName}
-                onChange={(e) =>
-                  onPartyFieldChange(partyKey, "companyName", e.target.value)
-                }
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-0.5">
-                Type
-              </label>
-              <select
-                className="w-full rounded border border-slate-200 px-2 py-0.5 text-xs focus:border-indigo-500 focus:outline-none"
-                value={partyData.entityType}
-                onChange={(e) =>
-                  onPartyFieldChange(partyKey, "entityType", e.target.value)
-                }
-              >
-                {ENTITY_TYPES.map((option) => (
-                  <option key={option}>{option}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-0.5">
-                Address
-              </label>
-              <input
-                type="text"
-                className="w-full rounded border border-slate-200 px-2 py-0.5 text-xs focus:border-indigo-500 focus:outline-none"
-                value={partyData.address}
-                onChange={(e) =>
-                  onPartyFieldChange(partyKey, "address", e.target.value)
-                }
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-0.5">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  className="w-full rounded border border-slate-200 px-2 py-0.5 text-xs focus:border-indigo-500 focus:outline-none"
-                  value={partyData.email}
-                  onChange={(e) =>
-                    onPartyFieldChange(partyKey, "email", e.target.value)
-                  }
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-0.5">
-                  Phone
-                </label>
-                <input
-                  type="tel"
-                  className="w-full rounded border border-slate-200 px-2 py-0.5 text-xs focus:border-indigo-500 focus:outline-none"
-                  value={partyData.phone}
-                  onChange={(e) =>
-                    onPartyFieldChange(partyKey, "phone", e.target.value)
-                  }
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      );
-    };
-
-    return (
-      <div className="grid grid-cols-2 gap-6 h-full p-2">
-        {renderCompactSection("buyer", "Buyer / Broker")}
-        <div className="border-l border-slate-100 pl-6">
-          {renderCompactSection("publisher", "Publisher")}
-        </div>
-      </div>
-    );
-  }
-
   const renderPartySection = (partyKey, label) => {
     const partyData = formData[partyKey];
     return (
@@ -5183,6 +4636,7 @@ const PartyInfoStep = ({ formData, onPartyFieldChange }) => {
             <input
               id={makePartyInputId(partyKey, "companyName")}
               type="text"
+              required
               className="w-full rounded border border-slate-300 px-2 py-1 text-xs focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               value={partyData.companyName}
               onChange={(e) =>
@@ -5214,6 +4668,7 @@ const PartyInfoStep = ({ formData, onPartyFieldChange }) => {
             <input
               id={makePartyInputId(partyKey, "address")}
               type="text"
+              required
               className="w-full rounded border border-slate-300 px-2 py-1 text-xs focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               value={partyData.address}
               onChange={(e) =>
@@ -5228,6 +4683,7 @@ const PartyInfoStep = ({ formData, onPartyFieldChange }) => {
             <input
               id={makePartyInputId(partyKey, "email")}
               type="email"
+              required
               className="w-full rounded border border-slate-300 px-2 py-1 text-xs focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               value={partyData.email}
               onChange={(e) =>
@@ -5242,6 +4698,7 @@ const PartyInfoStep = ({ formData, onPartyFieldChange }) => {
             <input
               id={makePartyInputId(partyKey, "phone")}
               type="tel"
+              required
               className="w-full rounded border border-slate-300 px-2 py-1 text-xs focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               value={partyData.phone}
               onChange={(e) =>
@@ -5260,13 +4717,13 @@ const PartyInfoStep = ({ formData, onPartyFieldChange }) => {
         "buyer",
         formData?.type === "ACA Health"
           ? "ACA Insurance Agency Information"
-          : "Buyer / Broker Information"
+          : "Buyer / Broker Information",
       )}
       {renderPartySection(
         "publisher",
         formData?.type === "ACA Health"
           ? "Agent Recruiter Information"
-          : "Publisher Information"
+          : "Publisher Information",
       )}
     </div>
   );
@@ -5477,177 +4934,6 @@ const LLCFormationStep = ({ formData, onFieldChange }) => {
 };
 
 const CampaignDetailsStep = ({ formData, onFieldChange }) => {
-  if (formData.contractType === "CPL2") {
-    return (
-      <div className="flex flex-col gap-3 h-full overflow-hidden p-2">
-        {/* Top Row: Core Parameters - 5 Columns */}
-        <div className="grid grid-cols-5 gap-2">
-          <div className="space-y-1">
-            <label className="block text-[10px] font-bold uppercase text-slate-500">
-              Vertical
-            </label>
-            <select
-              className="w-full rounded border border-slate-300 px-2 py-1 text-xs focus:border-indigo-500 focus:outline-none"
-              value={formData.vertical}
-              onChange={(e) => onFieldChange("vertical", e.target.value)}
-            >
-              {VERTICALS.map((option) => (
-                <option key={option}>{option}</option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-1">
-            <label className="block text-[10px] font-bold uppercase text-slate-500">
-              Type
-            </label>
-            <select
-              className="w-full rounded border border-slate-300 px-2 py-1 text-xs focus:border-indigo-500 focus:outline-none"
-              value={formData.type}
-              onChange={(e) => onFieldChange("type", e.target.value)}
-            >
-              {CAMPAIGN_TYPES.map((option) => (
-                <option key={option}>{option}</option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-1">
-            <label className="block text-[10px] font-bold uppercase text-slate-500">
-              Payout
-            </label>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              className="w-full rounded border border-slate-300 px-2 py-1 text-xs focus:border-indigo-500 focus:outline-none"
-              value={formData.payout}
-              onChange={(e) => onFieldChange("payout", e.target.value)}
-              placeholder="$0.00"
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="block text-[10px] font-bold uppercase text-slate-500">
-              Billing Cycle
-            </label>
-            <select
-              className="w-full rounded border border-slate-300 px-2 py-1 text-xs focus:border-indigo-500 focus:outline-none"
-              value={formData.billingCycle}
-              onChange={(e) => onFieldChange("billingCycle", e.target.value)}
-            >
-              {BILLING_CYCLES.map((option) => (
-                <option key={option}>{option}</option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-1">
-            <label className="block text-[10px] font-bold uppercase text-slate-500">
-              Buffer (Sec)
-            </label>
-            <select
-              className="w-full rounded border border-slate-300 px-2 py-1 text-xs focus:border-indigo-500 focus:outline-none"
-              value={formData.bufferTime}
-              onChange={(e) => onFieldChange("bufferTime", e.target.value)}
-            >
-              {BUFFER_TIMES.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* Middle Row: Liability */}
-        <div className="flex items-center gap-2 rounded border border-slate-200 bg-slate-50 px-3 py-2">
-          <input
-            type="checkbox"
-            className="h-3.5 w-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-            checked={formData.brokerLiability}
-            onChange={(e) => onFieldChange("brokerLiability", e.target.checked)}
-          />
-          <label className="text-xs font-medium text-slate-700">
-            Broker accepts liability for call costs if end-user defaults on
-            payment
-          </label>
-        </div>
-
-        {/* Bottom Section: Compliance (Merged) */}
-        <div className="flex-1 rounded border border-slate-200 p-2">
-          <h3 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
-            Compliance Configuration
-          </h3>
-          <div className="grid grid-cols-2 gap-6">
-            <div className="space-y-1">
-              <label className="block text-xs font-medium text-slate-700">
-                Proof of Consent
-              </label>
-              <div className="flex flex-wrap gap-1">
-                {PROOF_OF_CONSENT_OPTIONS.map((option) => (
-                  <label
-                    key={option}
-                    className={`flex cursor-pointer items-center gap-1 rounded border px-2 py-1 text-[10px] transition ${
-                      formData.proofOfConsent === option
-                        ? "border-indigo-300 bg-indigo-50 text-indigo-700 shadow-sm"
-                        : "border-slate-100 bg-white text-slate-600 hover:bg-slate-50"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="proof-compact"
-                      className="hidden"
-                      checked={formData.proofOfConsent === option}
-                      onChange={() => onFieldChange("proofOfConsent", option)}
-                    />
-                    <div
-                      className={`h-2 w-2 rounded-full border ${
-                        formData.proofOfConsent === option
-                          ? "border-indigo-500 bg-indigo-500"
-                          : "border-slate-300 bg-transparent"
-                      }`}
-                    />
-                    {option}
-                  </label>
-                ))}
-              </div>
-            </div>
-            <div className="space-y-1">
-              <label className="block text-xs font-medium text-slate-700">
-                Datapass
-              </label>
-              <div className="flex flex-wrap gap-1">
-                {["Yes", "No"].map((option) => (
-                  <label
-                    key={option}
-                    className={`flex cursor-pointer items-center gap-1 rounded border px-2 py-1 text-[10px] transition ${
-                      formData.datapass === option
-                        ? "border-indigo-300 bg-indigo-50 text-indigo-700 shadow-sm"
-                        : "border-slate-100 bg-white text-slate-600 hover:bg-slate-50"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="datapass-compact"
-                      className="hidden"
-                      checked={formData.datapass === option}
-                      onChange={() => onFieldChange("datapass", option)}
-                    />
-                    <div
-                      className={`h-2 w-2 rounded-full border ${
-                        formData.datapass === option
-                          ? "border-indigo-500 bg-indigo-500"
-                          : "border-slate-300 bg-transparent"
-                      }`}
-                    />
-                    {option}
-                  </label>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-3 max-h-full overflow-y-auto">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -5916,267 +5202,6 @@ const CampaignDetailsStep = ({ formData, onFieldChange }) => {
             </div>
           </div>
         </div>
-      ) : formData.type === "FE Closing" ? (
-        <div className="space-y-4">
-          {/* Service Overview Card */}
-          <div className="rounded-xl border-2 border-emerald-200 bg-gradient-to-br from-emerald-50 to-white p-4 shadow-sm">
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center">
-                <svg
-                  className="w-5 h-5 text-white"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              </div>
-              <div>
-                <h4 className="font-bold text-sm text-slate-800 mb-1">
-                  Service Overview
-                </h4>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  Transfer calls from call centers to onshore, licensed final
-                  expense agents. Agents close the deal, submit the application,
-                  and handle voice signatures compliantly. Our Retention team
-                  onboards and maintains contact for 1 year.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Compliance Badge */}
-          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200">
-            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-amber-500 flex items-center justify-center">
-              <svg
-                className="w-3 h-3 text-white"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </div>
-            <p className="text-xs font-semibold text-amber-800">
-              <span className="font-bold">Strict Compliance:</span> Licensed
-              agents never fabricate contact info. Voice signatures used
-              whenever available.
-            </p>
-          </div>
-
-          {/* Commission Inputs Section */}
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <h5 className="font-bold text-sm text-slate-800 mb-3 flex items-center gap-2">
-              <svg
-                className="w-4 h-4 text-emerald-500"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              Commission Structure
-            </h5>
-            <p className="text-xs text-slate-500 mb-4">
-              You can select BOTH Frontend and Backend commissions. They are not
-              mutually exclusive.
-            </p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Frontend Commission */}
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-slate-700">
-                  Frontend Commission (%)
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="0.1"
-                    className={`w-full rounded-lg border px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 ${
-                      formData.feClosingFrontendCommission &&
-                      (parseFloat(formData.feClosingFrontendCommission) < 0 ||
-                        parseFloat(formData.feClosingFrontendCommission) > 100)
-                        ? "border-red-300 focus:ring-red-200 focus:border-red-500"
-                        : "border-slate-300 focus:ring-emerald-200 focus:border-emerald-500"
-                    }`}
-                    value={formData.feClosingFrontendCommission}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      if (
-                        value === "" ||
-                        (parseFloat(value) >= 0 && parseFloat(value) <= 100)
-                      ) {
-                        onFieldChange("feClosingFrontendCommission", value);
-                      }
-                    }}
-                    placeholder="0 - 100"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
-                    %
-                  </span>
-                </div>
-                <p className="text-xs text-slate-500">
-                  Percentage of the advanced commissions paid to the agency.
-                </p>
-              </div>
-
-              {/* Backend Commission */}
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-slate-700">
-                  Backend Commission (%)
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="0.1"
-                    className={`w-full rounded-lg border px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 ${
-                      formData.feClosingBackendCommission &&
-                      (parseFloat(formData.feClosingBackendCommission) < 0 ||
-                        parseFloat(formData.feClosingBackendCommission) > 100)
-                        ? "border-red-300 focus:ring-red-200 focus:border-red-500"
-                        : "border-slate-300 focus:ring-emerald-200 focus:border-emerald-500"
-                    }`}
-                    value={formData.feClosingBackendCommission}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      if (
-                        value === "" ||
-                        (parseFloat(value) >= 0 && parseFloat(value) <= 100)
-                      ) {
-                        onFieldChange("feClosingBackendCommission", value);
-                      }
-                    }}
-                    placeholder="0 - 100"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
-                    %
-                  </span>
-                </div>
-                <p className="text-xs text-slate-500">
-                  Percentage of backend commissions (months 10-12) on active
-                  policies.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Chargeback Replacement Section */}
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <h5 className="font-bold text-sm text-slate-800 mb-3 flex items-center gap-2">
-              <svg
-                className="w-4 h-4 text-blue-500"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
-              </svg>
-              Chargeback Replacement Period
-            </h5>
-
-            <div className="space-y-3">
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-slate-700">
-                  Chargeback Replacement Period (Months)
-                </label>
-                <select
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200"
-                  value={formData.feClosingChargebackReplacement}
-                  onChange={(e) =>
-                    onFieldChange(
-                      "feClosingChargebackReplacement",
-                      e.target.value
-                    )
-                  }
-                >
-                  {CHARGEBACK_REPLACEMENT_OPTIONS.map((option) => (
-                    <option key={option} value={option}>
-                      {option} {option === "1" ? "month" : "months"}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Dynamic Replacement Guarantee Text */}
-              <div className="rounded-lg bg-blue-50 border border-blue-200 p-3">
-                <p className="text-sm text-blue-800 font-medium flex items-start gap-2">
-                  <svg
-                    className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  <span>
-                    <strong>Replacement Guarantee:</strong> We will replace any
-                    policy that is not funded or lapses within the first{" "}
-                    <span className="font-bold text-blue-900 underline">
-                      {formData.feClosingChargebackReplacement}
-                    </span>{" "}
-                    months at no charge.
-                  </span>
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Payment Cycle Info */}
-          <div className="rounded-xl border-2 border-green-200 bg-gradient-to-br from-green-50 to-white p-4 shadow-sm">
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-green-500 flex items-center justify-center">
-                <svg
-                  className="w-5 h-5 text-white"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
-                  />
-                </svg>
-              </div>
-              <div>
-                <h4 className="font-bold text-sm text-slate-800 mb-1">
-                  Payment Cycle
-                </h4>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  <strong>Paid Same-Day:</strong> Agency pays us the same day
-                  the carrier pays them (applies to both On-Issue and Draft
-                  carriers).
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
       ) : formData.type === "Employment Contract" ? (
         <div className="space-y-1">
           <div className="rounded border border-green-200 bg-green-50 p-1">
@@ -6353,7 +5378,7 @@ const CampaignDetailsStep = ({ formData, onFieldChange }) => {
                       } else {
                         onFieldChange(
                           "benefits",
-                          currentBenefits.filter((b) => b !== benefit)
+                          currentBenefits.filter((b) => b !== benefit),
                         );
                       }
                     }}
@@ -6383,63 +5408,235 @@ const CampaignDetailsStep = ({ formData, onFieldChange }) => {
         <div className="space-y-4">
           <div className="rounded-lg border border-green-200 bg-green-50 p-4">
             <h4 className="font-semibold" style={{ color: "#263149" }}>
-              ACA Insurance Agency Recruitment Agreement
+              ACA Insurance Agency Agreement
             </h4>
             <p className="mt-2 text-sm" style={{ color: "#263149" }}>
-              Configure the payment structure for recruiting agents and managing
-              ACA health insurance policies.
+              Select agreement type and configure payment structure.
             </p>
           </div>
 
+          {/* ACA Sub-Type Selector */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-slate-700">
+              Agreement Type
+            </label>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              {ACA_SUB_TYPES.map((subType) => (
+                <label
+                  key={subType.value}
+                  className={`flex flex-col gap-1 rounded-lg border-2 px-3 py-2 cursor-pointer transition ${
+                    formData.acaSubType === subType.value
+                      ? "border-green-500 bg-green-50"
+                      : "border-slate-200 bg-white hover:border-slate-300"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="acaSubType"
+                      value={subType.value}
+                      checked={formData.acaSubType === subType.value}
+                      onChange={(e) => onFieldChange("acaSubType", e.target.value)}
+                      className="h-4 w-4 text-green-600"
+                    />
+                    <span className="text-sm font-bold" style={{ color: "#263149" }}>
+                      {subType.label}
+                    </span>
+                  </div>
+                  <span className="text-xs text-slate-500 ml-6">{subType.description}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Partnership Fields */}
+          {formData.acaSubType === "Partnership" && (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-slate-700">
+                  NPN Override Amount ($/month)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  value={formData.acaNpnOverride}
+                  onChange={(e) =>
+                    onFieldChange("acaNpnOverride", e.target.value)
+                  }
+                  placeholder="25"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-slate-700">
+                  Per Policy Amount ($)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  value={formData.acaPerPolicy}
+                  onChange={(e) => onFieldChange("acaPerPolicy", e.target.value)}
+                  placeholder="20"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-slate-700">
+                  Agent Bonus ($/month)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  value={formData.acaAgentBonus}
+                  onChange={(e) => onFieldChange("acaAgentBonus", e.target.value)}
+                  placeholder="10"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* CPL Fields */}
+          {formData.acaSubType === "CPL" && (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-slate-700">
+                  Payout per Qualified Call ($)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  value={formData.acaCplPayout}
+                  onChange={(e) => onFieldChange("acaCplPayout", e.target.value)}
+                  placeholder="45"
+                />
+                <p className="text-xs text-slate-500">
+                  Amount paid per call that meets or exceeds the duration threshold.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-slate-700">
+                  Call Duration / Buffer Time (seconds)
+                </label>
+                <select
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  value={formData.acaCplBufferTime}
+                  onChange={(e) => onFieldChange("acaCplBufferTime", e.target.value)}
+                >
+                  {BUFFER_TIMES.map((option) => (
+                    <option key={option} value={option}>
+                      {option} seconds
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-slate-500">
+                  Minimum call duration to qualify for payout.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* CPA Fields */}
+          {formData.acaSubType === "CPA" && (
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-slate-700">
+                Payout per Qualified Enrollment ($)
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                value={formData.acaCpaPayout}
+                onChange={(e) => onFieldChange("acaCpaPayout", e.target.value)}
+                placeholder="150"
+              />
+              <p className="text-xs text-slate-500">
+                Amount paid per verified ACA health insurance enrollment/policy sale.
+              </p>
+            </div>
+          )}
+
+          {/* Shared fields for all ACA sub-types */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="space-y-2">
               <label className="block text-sm font-medium text-slate-700">
-                NPN Override Amount ($/month)
+                Billing Cycle
               </label>
-              <input
-                type="number"
-                min="1"
-                step="1"
+              <select
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                value={formData.acaNpnOverride}
+                value={formData.acaBillingCycle}
                 onChange={(e) =>
-                  onFieldChange("acaNpnOverride", e.target.value)
+                  onFieldChange("acaBillingCycle", e.target.value)
                 }
-                placeholder="25"
-              />
+              >
+                {BILLING_CYCLES.map((option) => (
+                  <option key={option}>{option}</option>
+                ))}
+              </select>
             </div>
 
             <div className="space-y-2">
               <label className="block text-sm font-medium text-slate-700">
-                Per Policy Amount ($)
+                Chargeback Liability Period
+              </label>
+              <select
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                value={formData.acaChargebackLiability}
+                onChange={(e) =>
+                  onFieldChange("acaChargebackLiability", e.target.value)
+                }
+              >
+                {CHARGEBACK_LIABILITY_OPTIONS.map((option) => (
+                  <option key={option}>{option}</option>
+                ))}
+              </select>
+              <p className="text-xs text-slate-500">
+                Time period the recruiter is liable for policy
+                chargebacks/lapses.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-slate-700">
+                Agreement Duration (months)
               </label>
               <input
                 type="number"
                 min="1"
                 step="1"
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                value={formData.acaPerPolicy}
-                onChange={(e) => onFieldChange("acaPerPolicy", e.target.value)}
-                placeholder="20"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-slate-700">
-                Agent Bonus ($/month)
-              </label>
-              <input
-                type="number"
-                min="1"
-                step="1"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                value={formData.acaAgentBonus}
-                onChange={(e) => onFieldChange("acaAgentBonus", e.target.value)}
-                placeholder="10"
+                value={formData.acaDuration}
+                onChange={(e) =>
+                  onFieldChange("acaDuration", e.target.value)
+                }
+                placeholder="12"
               />
             </div>
           </div>
+
+          <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+              checked={formData.brokerLiability}
+              onChange={(e) =>
+                onFieldChange("brokerLiability", e.target.checked)
+              }
+            />
+            <label className="text-sm text-slate-700">
+              Agency accepts liability for payment if carrier defaults
+            </label>
+          </div>
         </div>
+
       ) : formData.vertical === "Final Expense" && formData.type === "CPA" ? (
         <div className="space-y-4">
           <div className="space-y-2">
@@ -6608,7 +5805,7 @@ const CampaignDetailsStep = ({ formData, onFieldChange }) => {
           </select>
         </div>
 
-        {(formData.type === "CPL" || formData.type === "CPL2") && (
+        {formData.type === "CPL" && (
           <div className="space-y-2">
             <label className="block text-sm font-medium text-slate-700">
               Buffer Time (seconds)
@@ -6640,284 +5837,107 @@ const CampaignDetailsStep = ({ formData, onFieldChange }) => {
           payment
         </label>
       </div>
-
-      {formData.contractType === "CPL2" && (
-        <div className="mt-4 border-t border-slate-200 pt-4">
-          {/* Merged Compliance Section for CPL2 */}
-          <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-slate-900">
-              Compliance Options
-            </h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">
-                  Proof of Consent
-                </label>
-                <div className="grid grid-cols-3 gap-1">
-                  {PROOF_OF_CONSENT_OPTIONS.map((option) => {
-                    const id = `proof-${option}-merged`;
-                    return (
-                      <label
-                        key={option}
-                        htmlFor={id}
-                        className={`flex items-center gap-1 rounded border px-2 py-1 text-xs transition ${
-                          formData.proofOfConsent === option
-                            ? "border-indigo-300 bg-indigo-50 text-indigo-700"
-                            : "border-slate-200 bg-white text-slate-700"
-                        }`}
-                      >
-                        <input
-                          id={id}
-                          type="radio"
-                          name="proof-merged"
-                          className="h-3 w-3 border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                          checked={formData.proofOfConsent === option}
-                          onChange={() =>
-                            onFieldChange("proofOfConsent", option)
-                          }
-                        />
-                        <span className="text-xs">{option}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">
-                  Datapass
-                </label>
-                <div className="grid grid-cols-2 gap-1">
-                  {["Yes", "No"].map((option) => {
-                    const id = `datapass-${option}-merged`;
-                    return (
-                      <label
-                        key={option}
-                        htmlFor={id}
-                        className={`flex items-center gap-1 rounded border px-2 py-1 text-xs transition ${
-                          formData.datapass === option
-                            ? "border-indigo-300 bg-indigo-50 text-indigo-700"
-                            : "border-slate-200 bg-white text-slate-700"
-                        }`}
-                      >
-                        <input
-                          id={id}
-                          type="radio"
-                          name="datapass-merged"
-                          className="h-3 w-3 border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                          checked={formData.datapass === option}
-                          onChange={() => onFieldChange("datapass", option)}
-                        />
-                        <span className="text-xs">{option}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
 
 const RequirementsStep = ({ formData, onToggleArray, onFieldChange }) => {
-  const [newFilter, setNewFilter] = useState("");
-  const ages = Array.from({ length: 101 }, (_, i) => i);
-
-  const staticFilters = [
-    "Must NOT live in a nursing home",
-    "Must NOT need a power of attorney",
-    "Must have an active checking or card",
-  ];
-
   return (
-    <div className="space-y-4 max-h-full overflow-y-auto p-2">
-      {/* Age Requirements - Row 1 */}
-      <div className="bg-slate-50 rounded-lg border border-slate-200 p-3">
-        <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">
+    <div className="space-y-3 max-h-full overflow-y-auto">
+      <div className="space-y-2">
+        <h3 className="text-sm font-semibold text-slate-900">
           Age Requirements
         </h3>
-        <div className="flex items-center gap-4">
-          <div className="flex-1">
-            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
-              From Age
-            </label>
-            <select
-              className="w-full rounded border border-slate-300 px-2 py-1 text-xs focus:border-indigo-500 focus:outline-none"
-              value={formData.minAge}
-              onChange={(e) => onFieldChange("minAge", e.target.value)}
-            >
-              <option value="">Select...</option>
-              {ages.map((age) => (
-                <option key={`min-${age}`} value={age}>
-                  {age}
-                </option>
-              ))}
-            </select>
-          </div>
-          <span className="text-xs font-bold text-slate-400 mt-4">TO</span>
-          <div className="flex-1">
-            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
-              To Age
-            </label>
-            <select
-              className="w-full rounded border border-slate-300 px-2 py-1 text-xs focus:border-indigo-500 focus:outline-none"
-              value={formData.maxAge}
-              onChange={(e) => onFieldChange("maxAge", e.target.value)}
-            >
-              <option value="">Select...</option>
-              {ages.map((age) => (
-                <option key={`max-${age}`} value={age}>
-                  {age}
-                </option>
-              ))}
-            </select>
-          </div>
+        <div className="grid grid-cols-2 gap-1">
+          {REQUIREMENTS_OPTIONS.map((requirement) => {
+            const id = `req-${requirement}`;
+            return (
+              <label
+                key={requirement}
+                htmlFor={id}
+                className="flex items-center gap-2 rounded border border-slate-200 bg-slate-50 p-2 text-xs text-slate-700 hover:bg-slate-100"
+              >
+                <input
+                  id={id}
+                  type="checkbox"
+                  className="h-3 w-3 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                  checked={formData.requirements.includes(requirement)}
+                  onChange={() => onToggleArray("requirements", requirement)}
+                />
+                <span className="text-xs">{requirement}</span>
+              </label>
+            );
+          })}
         </div>
       </div>
 
-      {/* Main Grid: Filters & Compliance */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Filters Column */}
+      <div className="space-y-2">
+        <h3 className="text-sm font-semibold text-slate-900">
+          Compliance Options
+        </h3>
+
         <div className="space-y-2">
-          <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-            Targeting Filters
-          </h3>
-          <div className="space-y-1">
-            {staticFilters.map((filter) => (
-              <label
-                key={filter}
-                className={`flex cursor-pointer items-center gap-2 rounded border px-2 py-1.5 transition ${
-                  formData.requirements.includes(filter)
-                    ? "border-indigo-300 bg-indigo-50 text-indigo-700"
-                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  className="h-3.5 w-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                  checked={formData.requirements.includes(filter)}
-                  onChange={() => onToggleArray("requirements", filter)}
-                />
-                <span className="text-xs">{filter}</span>
-              </label>
-            ))}
-          </div>
-
-          <div className="mt-2 pt-2 border-t border-slate-100">
-            <div className="flex gap-2 mb-2">
-              <input
-                type="text"
-                placeholder="Add custom filter..."
-                className="flex-1 rounded border border-slate-300 px-2 py-1 text-xs focus:border-indigo-500 focus:outline-none"
-                value={newFilter}
-                onChange={(e) => setNewFilter(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    if (newFilter.trim()) {
-                      onToggleArray("requirements", newFilter.trim());
-                      setNewFilter("");
-                    }
-                  }
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  if (newFilter.trim()) {
-                    onToggleArray("requirements", newFilter.trim());
-                    setNewFilter("");
-                  }
-                }}
-                className="rounded bg-indigo-600 px-3 py-1 text-xs font-semibold text-white hover:bg-indigo-700"
-              >
-                Add
-              </button>
-            </div>
-            <div className="space-y-1 max-h-[100px] overflow-y-auto">
-              {formData.requirements
-                .filter((r) => !staticFilters.includes(r))
-                .map((req, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center justify-between rounded border border-indigo-100 bg-indigo-50 px-2 py-1"
-                  >
-                    <span className="text-xs text-indigo-700 truncate mr-2">
-                      {req}
-                    </span>
-                    <button
-                      onClick={() => onToggleArray("requirements", req)}
-                      className="text-indigo-400 hover:text-indigo-600"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </div>
-                ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Compliance Column (Compact) */}
-        <div className="space-y-3">
-          <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-            Compliance Configuration
-          </h3>
-
-          <div className="space-y-1">
-            <label className="block text-xs font-medium text-slate-700">
+          <div>
+            <label className="block text-xs font-medium text-slate-700 mb-1">
               Proof of Consent
             </label>
-            <div className="flex flex-wrap gap-1">
-              {PROOF_OF_CONSENT_OPTIONS.map((option) => (
-                <label
-                  key={option}
-                  className={`flex cursor-pointer items-center gap-1.5 rounded border px-2 py-1.5 transition ${
-                    formData.proofOfConsent === option
-                      ? "border-indigo-300 bg-indigo-50 text-indigo-700"
-                      : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="proof-req"
-                    className="h-3.5 w-3.5 border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                    checked={formData.proofOfConsent === option}
-                    onChange={() => onFieldChange("proofOfConsent", option)}
-                  />
-                  <span className="text-xs">{option}</span>
-                </label>
-              ))}
+            <div className="grid grid-cols-3 gap-1">
+              {PROOF_OF_CONSENT_OPTIONS.map((option) => {
+                const id = `proof-${option}`;
+                return (
+                  <label
+                    key={option}
+                    htmlFor={id}
+                    className={`flex items-center gap-1 rounded border px-2 py-1 text-xs transition ${
+                      formData.proofOfConsent === option
+                        ? "border-indigo-300 bg-indigo-50 text-indigo-700"
+                        : "border-slate-200 bg-white text-slate-700"
+                    }`}
+                  >
+                    <input
+                      id={id}
+                      type="radio"
+                      name="proof"
+                      className="h-3 w-3 border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                      checked={formData.proofOfConsent === option}
+                      onChange={() => onFieldChange("proofOfConsent", option)}
+                    />
+                    <span className="text-xs">{option}</span>
+                  </label>
+                );
+              })}
             </div>
           </div>
 
-          <div className="pt-2">
+          <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">
               Datapass
             </label>
-            <div className="flex flex-wrap gap-1">
-              {["Yes", "No"].map((option) => (
-                <label
-                  key={option}
-                  className={`flex cursor-pointer items-center gap-1.5 rounded border px-3 py-1.5 transition ${
-                    formData.datapass === option
-                      ? "border-indigo-300 bg-indigo-50 text-indigo-700"
-                      : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="datapass-req"
-                    className="h-3.5 w-3.5 border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                    checked={formData.datapass === option}
-                    onChange={() => onFieldChange("datapass", option)}
-                  />
-                  <span className="text-xs">{option}</span>
-                </label>
-              ))}
+            <div className="grid grid-cols-2 gap-1">
+              {["Yes", "No"].map((option) => {
+                const id = `datapass-${option}`;
+                return (
+                  <label
+                    key={option}
+                    htmlFor={id}
+                    className={`flex items-center gap-1 rounded border px-2 py-1 text-xs transition ${
+                      formData.datapass === option
+                        ? "border-indigo-300 bg-indigo-50 text-indigo-700"
+                        : "border-slate-200 bg-white text-slate-700"
+                    }`}
+                  >
+                    <input
+                      id={id}
+                      type="radio"
+                      name="datapass"
+                      className="h-3 w-3 border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                      checked={formData.datapass === option}
+                      onChange={() => onFieldChange("datapass", option)}
+                    />
+                    <span className="text-xs">{option}</span>
+                  </label>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -7846,46 +6866,20 @@ const ReviewGenerateStep = ({
   saving,
   buyerComplete,
   publisherComplete,
-  branding,
 }) => {
-  const styles = branding
-    ? {
-        cardBg: branding.isAce ? "#f8fafc" : "#f0fdf4", // Slate-50 for Ace
-        cardBorder: branding.primary,
-        iconColor: branding.primary, // Primary for static icon
-        titleColor: branding.primary,
-        textColor: branding.primary,
-      }
-    : {
-        cardBg: "#f0fdf4",
-        cardBorder: "#86efac",
-        iconColor: "#24bd68",
-        titleColor: "#263149",
-        textColor: "#263149",
-      };
-
   return (
     <div className="space-y-4 max-h-full overflow-y-auto">
       <div
-        className="rounded-lg border border-green-200 bg-green-50 p-6"
-        style={{
-          backgroundColor: styles.cardBg,
-          borderColor: styles.cardBorder,
-        }}
+        className="rounded-lg border p-6"
+        style={{ backgroundColor: "#F0FAF5", borderColor: "#5BC894" }}
       >
         <div className="flex items-center gap-3 mb-4">
-          <ShieldCheck
-            className="h-6 w-6"
-            style={{ color: styles.iconColor }}
-          />
-          <h3
-            className="text-lg font-semibold"
-            style={{ color: styles.titleColor }}
-          >
+          <ShieldCheck className="h-6 w-6" style={{ color: "#2EAC6D" }} />
+          <h3 className="text-lg font-semibold" style={{ color: "#263149" }}>
             Ready to Generate Contract
           </h3>
         </div>
-        <p className="text-sm mb-4" style={{ color: styles.textColor }}>
+        <p className="text-sm mb-4" style={{ color: "#263149" }}>
           All required information has been collected. The AI will generate a
           compliant insertion order with overseas publisher fairness clauses and
           broker liability language based on your selections.
@@ -7893,13 +6887,10 @@ const ReviewGenerateStep = ({
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <h4 className="font-medium" style={{ color: styles.titleColor }}>
+            <h4 className="font-medium" style={{ color: "#263149" }}>
               Campaign Summary
             </h4>
-            <div
-              className="text-sm space-y-1"
-              style={{ color: styles.textColor }}
-            >
+            <div className="text-sm space-y-1" style={{ color: "#263149" }}>
               <div>
                 <strong>Vertical:</strong> {formData.vertical}
               </div>
@@ -7909,15 +6900,51 @@ const ReviewGenerateStep = ({
               {formData.type === "ACA Health" ? (
                 <>
                   <div>
-                    <strong>NPN Override:</strong> ${formData.acaNpnOverride}
-                    /month
+                    <strong>Agreement Type:</strong> ACA {formData.acaSubType}
+                  </div>
+                  {formData.acaSubType === "Partnership" && (
+                    <>
+                      <div>
+                        <strong>NPN Override:</strong> ${formData.acaNpnOverride}
+                        /month
+                      </div>
+                      <div>
+                        <strong>Per Policy:</strong> ${formData.acaPerPolicy}
+                      </div>
+                      <div>
+                        <strong>Agent Bonus:</strong> ${formData.acaAgentBonus}
+                        /month
+                      </div>
+                    </>
+                  )}
+                  {formData.acaSubType === "CPL" && (
+                    <>
+                      <div>
+                        <strong>Payout per Call:</strong> ${formData.acaCplPayout}
+                      </div>
+                      <div>
+                        <strong>Buffer Time:</strong> {formData.acaCplBufferTime} seconds
+                      </div>
+                    </>
+                  )}
+                  {formData.acaSubType === "CPA" && (
+                    <div>
+                      <strong>Payout per Enrollment:</strong> ${formData.acaCpaPayout}
+                    </div>
+                  )}
+                  <div>
+                    <strong>Billing Cycle:</strong> {formData.acaBillingCycle}
                   </div>
                   <div>
-                    <strong>Per Policy:</strong> ${formData.acaPerPolicy}
+                    <strong>Chargeback Liability:</strong>{" "}
+                    {formData.acaChargebackLiability}
                   </div>
                   <div>
-                    <strong>Agent Bonus:</strong> ${formData.acaAgentBonus}
-                    /month
+                    <strong>Duration:</strong> {formData.acaDuration} months
+                  </div>
+                  <div>
+                    <strong>Agency Liability:</strong>{" "}
+                    {formData.brokerLiability ? "Accepted" : "Declined"}
                   </div>
                 </>
               ) : (
@@ -7964,19 +6991,19 @@ const ReviewGenerateStep = ({
                 formData.contractType !== "LLC Operating Agreement" &&
                 (!buyerComplete || !publisherComplete))
                 ? "#9ca3af"
-                : "#24bd68",
+                : "#143B5E",
           }}
           onMouseEnter={(e) =>
-            !e.target.disabled && (e.target.style.backgroundColor = "#1ea456")
+            !e.target.disabled && (e.target.style.backgroundColor = "#142D49")
           }
           onMouseLeave={(e) =>
-            !e.target.disabled && (e.target.style.backgroundColor = "#24bd68")
+            !e.target.disabled && (e.target.style.backgroundColor = "#143B5E")
           }
           onMouseDown={(e) =>
-            !e.target.disabled && (e.target.style.backgroundColor = "#1ea456")
+            !e.target.disabled && (e.target.style.backgroundColor = "#142D49")
           }
           onMouseUp={(e) =>
-            !e.target.disabled && (e.target.style.backgroundColor = "#24bd68")
+            !e.target.disabled && (e.target.style.backgroundColor = "#143B5E")
           }
         >
           {generating ? (
@@ -8089,13 +7116,13 @@ const FormView = ({
         "buyer",
         formData?.type === "ACA Health"
           ? "ACA Insurance Agency Information"
-          : "Buyer / Broker Information"
+          : "Buyer / Broker Information",
       )}
       {renderPartySection(
         "publisher",
         formData?.type === "ACA Health"
           ? "Agent Recruiter Information"
-          : "Publisher Information"
+          : "Publisher Information",
       )}
 
       <section className={CARD_CLASSES}>
@@ -8174,26 +7201,26 @@ const FormView = ({
               </p>
               <ul className="mt-2 space-y-1 text-xs">
                 <li>
-                  â€¢ Recruiter hires two types of agents for the ACA Insurance
+                  Ã¢â‚¬Â¢ Recruiter hires two types of agents for the ACA Insurance
                   Agency
                 </li>
                 <li>
-                  â€¢ NPN Override Agents: Provide NPN numbers for agency to
+                  Ã¢â‚¬Â¢ NPN Override Agents: Provide NPN numbers for agency to
                   contract under
                 </li>
                 <li>
-                  â€¢ Direct Sales Agents: Sell ACA health insurance policies
+                  Ã¢â‚¬Â¢ Direct Sales Agents: Sell ACA health insurance policies
                   directly
                 </li>
                 <li>
-                  â€¢ Agency provides inbound calls and transfers to recruited
+                  Ã¢â‚¬Â¢ Agency provides inbound calls and transfers to recruited
                   agents
                 </li>
                 <li>
-                  â€¢ All payments contingent on policy being issued and paid by
+                  Ã¢â‚¬Â¢ All payments contingent on policy being issued and paid by
                   carrier
                 </li>
-                <li>â€¢ Residual payments made "as earned" each month</li>
+                <li>Ã¢â‚¬Â¢ Residual payments made "as earned" each month</li>
               </ul>
             </div>
 
@@ -8254,6 +7281,71 @@ const FormView = ({
                 sell ACA policies
               </p>
             </div>
+
+            <div className="space-y-1.5">
+              <label className={LABEL_CLASSES}>Billing Cycle</label>
+              <select
+                className={INPUT_BASE_CLASSES}
+                value={formData.acaBillingCycle}
+                onChange={(e) =>
+                  onFieldChange("acaBillingCycle", e.target.value)
+                }
+              >
+                {BILLING_CYCLES.map((option) => (
+                  <option key={option}>{option}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className={LABEL_CLASSES}>
+                Chargeback Liability Period
+              </label>
+              <select
+                className={INPUT_BASE_CLASSES}
+                value={formData.acaChargebackLiability}
+                onChange={(e) =>
+                  onFieldChange("acaChargebackLiability", e.target.value)
+                }
+              >
+                {CHARGEBACK_LIABILITY_OPTIONS.map((option) => (
+                  <option key={option}>{option}</option>
+                ))}
+              </select>
+              <p className="text-xs text-slate-500">
+                Time period the recruiter is liable for policy
+                chargebacks/lapses.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className={LABEL_CLASSES}>
+                Agreement Duration (months)
+              </label>
+              <input
+                type="number"
+                min="1"
+                step="1"
+                className={INPUT_BASE_CLASSES}
+                value={formData.acaDuration}
+                onChange={(e) =>
+                  onFieldChange("acaDuration", e.target.value)
+                }
+                placeholder="12"
+              />
+            </div>
+
+            <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                checked={formData.brokerLiability}
+                onChange={(e) =>
+                  onFieldChange("brokerLiability", e.target.checked)
+                }
+              />
+              Agency accepts liability for payment if carrier defaults
+            </label>
           </div>
         </section>
       )}
@@ -8276,7 +7368,7 @@ const FormView = ({
             </select>
           </div>
 
-          {(formData.type === "CPL" || formData.type === "CPL2") && (
+          {formData.type === "CPL" && (
             <div className="space-y-1.5">
               <label className={LABEL_CLASSES}>Buffer Time (seconds)</label>
               <select
@@ -8522,88 +7614,143 @@ const FormView = ({
 };
 
 const ContractView = ({
-  formData,
   contractText,
+  setBuyerSignature,
+  setPublisherSignature,
   setBuyerSignatureData,
   setPublisherSignatureData,
   onReset,
   onPrint,
-  onDownload,
   onDownloadPDF,
-  onEmailParties,
-  onSubmitSignature,
-  isSharedView,
   buyerSignatureData,
   publisherSignatureData,
-  docPath,
-  saving,
+  signingLink,
+  signingLinkCopied,
+  setSigningLinkCopied,
 }) => {
-  const [copySuccess, setCopySuccess] = useState(false);
+  const buyerPadRef = useRef(null);
+  const publisherPadRef = useRef(null);
 
-  // Calculate share link for the 'Copy Link' button
-  const shareLink = useMemo(() => {
-    if (!docPath) return "";
-    const pathParts = docPath.split("/");
-    const usersIdx = pathParts.indexOf("users");
-    const ioIdx = pathParts.indexOf("insertionOrders");
-    const uid = usersIdx !== -1 ? pathParts[usersIdx + 1] : pathParts[1];
-    const cid = ioIdx !== -1 ? pathParts[ioIdx + 1] : pathParts[3];
-    return `${window.location.origin}${window.location.pathname}?contractId=${cid}&uid=${uid}`;
-  }, [docPath]);
+  const [buyerSigned, setBuyerSigned] = useState(false);
+  const [publisherSigned, setPublisherSigned] = useState(false);
+  const [buyerSignDate, setBuyerSignDate] = useState(null);
+  const [publisherSignDate, setPublisherSignDate] = useState(null);
+  const [buyerPrintedName, setBuyerPrintedName] = useState("");
+  const [publisherPrintedName, setPublisherPrintedName] = useState("");
 
-  const handleCopyLink = async () => {
-    if (!shareLink) return;
-    try {
-      await navigator.clipboard.writeText(shareLink);
-      setCopySuccess(true);
-      setTimeout(() => setCopySuccess(false), 2000);
-    } catch (err) {
-      console.error("Failed to copy link:", err);
-    }
-  };
-  // References for signature canvases - must be declared before useEffects that use them
-  const buyerCanvasRef = useRef(null);
-  const publisherCanvasRef = useRef(null);
-
-  // Local state for UI feedback, but primarily driven by props
-  const [buyerSigned, setBuyerSigned] = useState(!!buyerSignatureData);
-  const [publisherSigned, setPublisherSigned] = useState(
-    !!publisherSignatureData
-  );
-  const [signatureProcess, setSignatureProcess] = useState("pending");
   const [zoomLevel, setZoomLevel] = useState(100);
 
-  useEffect(() => {
-    setBuyerSigned(!!buyerSignatureData);
-    setPublisherSigned(!!publisherSignatureData);
+  const bothSigned = buyerSigned && publisherSigned;
 
-    if (buyerSignatureData && publisherSignatureData) {
-      setSignatureProcess("completed");
-    } else if (buyerSignatureData) {
-      setSignatureProcess("buyer-signed");
-    } else if (publisherSignatureData) {
-      setSignatureProcess("publisher-signed");
-    } else {
-      setSignatureProcess("pending");
-    }
-  }, [buyerSignatureData, publisherSignatureData]);
+  // Build the contract HTML with signatures embedded
+  const contractWithSignatures = useMemo(() => {
+    if (!contractText) return "";
+    let html = contractText;
 
-  // Load existing signatures into canvasses
-  useEffect(() => {
-    if (buyerSignatureData && buyerCanvasRef.current) {
-      buyerCanvasRef.current.fromDataURL(buyerSignatureData);
+    // Replace buyer signature placeholder
+    if (buyerSignatureData && buyerSigned) {
+      html = html.replace(
+        /(<div style="border: 1px solid #000; height: 50px;[^"]*display: flex; align-items: center; justify-content: center;">)\s*(<div style="height: 40px;"><\/div>)\s*(<\/div>\s*<div style="font-size: 14px; font-weight: bold;">Buyer Signature)/s,
+        `$1<img src="${buyerSignatureData}" style="max-height: 45px; max-width: 95%;" />$3`
+      );
     }
-    if (publisherSignatureData && publisherCanvasRef.current) {
-      publisherCanvasRef.current.fromDataURL(publisherSignatureData);
+
+    if (publisherSignatureData && publisherSigned) {
+      html = html.replace(
+        /(<div style="border: 1px solid #000; height: 50px;[^"]*display: flex; align-items: center; justify-content: center;">)\s*(<div style="height: 40px;"><\/div>)\s*(<\/div>\s*<div style="font-size: 14px; font-weight: bold;">Publisher Signature)/s,
+        `$1<img src="${publisherSignatureData}" style="max-height: 45px; max-width: 95%;" />$3`
+      );
     }
-  }, [buyerSignatureData, publisherSignatureData]);
+
+    // Replace date placeholders
+    if (buyerSignDate) {
+      html = html.replace(
+        "Date: _______________",
+        `Date: ${buyerSignDate}`
+      );
+    }
+
+    if (publisherSignDate) {
+      html = html.replace(
+        "Date: _______________",
+        `Date: ${publisherSignDate}`
+      );
+    }
+
+    return html;
+  }, [contractText, buyerSignatureData, publisherSignatureData, buyerSigned, publisherSigned, buyerSignDate, publisherSignDate]);
+
+  const handleBuyerSign = () => {
+    if (!buyerPadRef.current || buyerPadRef.current.isEmpty()) return;
+    const dataUrl = buyerPadRef.current.toDataURL("image/png");
+    setBuyerSignatureData(dataUrl);
+    setBuyerSignature("signed");
+    setBuyerSigned(true);
+    setBuyerSignDate(new Date().toLocaleDateString("en-US", {
+      month: "long", day: "numeric", year: "numeric"
+    }));
+  };
+
+  const handlePublisherSign = () => {
+    if (!publisherPadRef.current || publisherPadRef.current.isEmpty()) return;
+    const dataUrl = publisherPadRef.current.toDataURL("image/png");
+    setPublisherSignatureData(dataUrl);
+    setPublisherSignature("signed");
+    setPublisherSigned(true);
+    setPublisherSignDate(new Date().toLocaleDateString("en-US", {
+      month: "long", day: "numeric", year: "numeric"
+    }));
+  };
+
+  const handleClearBuyer = () => {
+    if (buyerSigned) return;
+    buyerPadRef.current?.clear();
+  };
+
+  const handleClearPublisher = () => {
+    if (publisherSigned) return;
+    publisherPadRef.current?.clear();
+  };
+
+  // PDF download that includes signatures
+  const handleSignedPDF = () => {
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = contractWithSignatures;
+    tempDiv.className = "contract-body";
+    tempDiv.style.position = "absolute";
+    tempDiv.style.left = "-9999px";
+    tempDiv.style.top = "0";
+    document.body.appendChild(tempDiv);
+
+    const opt = {
+      margin: [0.3, 0.3, 0.3, 0.3],
+      filename: `signed-insertion-order-${Date.now()}.pdf`,
+      image: { type: "jpeg", quality: 0.98 },
+      html2canvas: {
+        scale: 2,
+        useCORS: true,
+        letterRendering: true,
+      },
+      jsPDF: {
+        unit: "in",
+        format: "letter",
+        orientation: "portrait",
+      },
+    };
+
+    html2pdf().set(opt).from(tempDiv).save().then(() => {
+      document.body.removeChild(tempDiv);
+    });
+  };
 
   return (
     <div className="h-full flex flex-col">
-      {/* Ultra-Compact Header - Minimal Space */}
-      <div className="flex-shrink-0 px-2 py-1">
+      {/* Header Bar */}
+      <div className="flex-shrink-0 px-3 py-2 border-b border-slate-200 bg-white">
         <div className="flex items-center justify-between">
-          <h2 className="text-xs font-semibold text-slate-900">Contract</h2>
+          <h2 className="text-sm font-bold text-slate-900">
+            {bothSigned ? "\u2713 Fully Executed Agreement" : "Agreement \u2014 Pending Signatures"}
+          </h2>
 
           {/* Zoom Controls */}
           <div className="flex items-center gap-2">
@@ -8612,14 +7759,14 @@ const ContractView = ({
               <button
                 type="button"
                 onClick={() => setZoomLevel(Math.max(25, zoomLevel - 25))}
-                className="rounded border border-slate-300 bg-white px-1 py-1 text-xs hover:bg-slate-50"
+                className="rounded border border-slate-300 bg-white px-1.5 py-0.5 text-xs hover:bg-slate-50"
               >
                 -
               </button>
               <select
                 value={zoomLevel}
                 onChange={(e) => setZoomLevel(Number(e.target.value))}
-                className="rounded border border-slate-300 bg-white px-1 py-1 text-xs"
+                className="rounded border border-slate-300 bg-white px-1 py-0.5 text-xs"
               >
                 <option value={25}>25%</option>
                 <option value={50}>50%</option>
@@ -8632,7 +7779,7 @@ const ContractView = ({
               <button
                 type="button"
                 onClick={() => setZoomLevel(Math.min(200, zoomLevel + 25))}
-                className="rounded border border-slate-300 bg-white px-1 py-1 text-xs hover:bg-slate-50"
+                className="rounded border border-slate-300 bg-white px-1.5 py-0.5 text-xs hover:bg-slate-50"
               >
                 +
               </button>
@@ -8640,54 +7787,24 @@ const ContractView = ({
           </div>
 
           <div className="flex gap-1">
-            {!isSharedView && (
-              <div className="flex gap-1">
-                <button
-                  type="button"
-                  onClick={onEmailParties}
-                  className="inline-flex items-center gap-1 rounded border border-indigo-300 bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700 shadow-sm transition hover:bg-indigo-100"
-                >
-                  <Mail className="h-3 w-3" /> Email Link
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCopyLink}
-                  className={`inline-flex items-center gap-1 rounded border border-slate-300 px-2 py-1 text-xs font-medium shadow-sm transition ${
-                    copySuccess 
-                      ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
-                      : "bg-white text-slate-700 hover:bg-slate-50"
-                  }`}
-                >
-                  <CheckCircle2 className={`h-3 w-3 ${copySuccess ? "text-emerald-500" : "text-slate-400"}`} />
-                  {copySuccess ? "Copied!" : "Copy link"}
-                </button>
-              </div>
-            )}
             <button
               type="button"
               onClick={onPrint}
-              className="inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
+              className="inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50"
             >
               <FileText className="h-3 w-3" /> Print
             </button>
             <button
               type="button"
-              onClick={onDownload}
-              className="inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
+              onClick={bothSigned ? handleSignedPDF : onDownloadPDF}
+              className="inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50"
             >
-              <FileText className="h-3 w-3" /> Download TXT
-            </button>
-            <button
-              type="button"
-              onClick={onDownloadPDF}
-              className="inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
-            >
-              <FileText className="h-3 w-3" /> Download PDF
+              <FileText className="h-3 w-3" /> {bothSigned ? "Download Signed PDF" : "Download PDF"}
             </button>
             <button
               type="button"
               onClick={onReset}
-              className="inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
+              className="inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50"
             >
               <ArrowLeft className="h-3 w-3" /> Reset
             </button>
@@ -8695,15 +7812,50 @@ const ContractView = ({
         </div>
       </div>
 
-      {/* Contract Content - Takes ALL remaining space */}
-      <div className="flex-1 flex flex-col min-h-0 mx-2">
+      {/* Share for Signing Banner */}
+      {signingLink && (
+        <div className="flex-shrink-0 mx-2 mt-1">
+          <div className="rounded-lg border px-4 py-2.5 flex items-center justify-between gap-3" style={{ borderColor: "#5BC894", backgroundColor: "#F0FAF5" }}>
+            <div className="flex items-center gap-2">
+              <Send className="h-4 w-4 flex-shrink-0" style={{ color: "#143B5E" }} />
+              <div>
+                <span className="text-xs font-bold" style={{ color: "#143B5E" }}>Share for E-Signature</span>
+                <p className="text-[10px] text-slate-500">Send this link to each party so they can sign electronically</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                readOnly
+                value={signingLink}
+                className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-600 w-64"
+                onClick={(e) => e.target.select()}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(signingLink);
+                  setSigningLinkCopied(true);
+                  setTimeout(() => setSigningLinkCopied(false), 3000);
+                }}
+                className="rounded-lg px-4 py-1.5 text-xs font-bold text-white whitespace-nowrap transition-all"
+                style={{ backgroundColor: signingLinkCopied ? "#2EAC6D" : "#143B5E" }}
+              >
+                {signingLinkCopied ? "âœ“ Copied!" : "Copy Link"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Contract Content */}
+      <div className="flex-1 flex flex-col min-h-0 mx-2 mt-1">
         <div className="flex-1 rounded-lg border border-slate-200 bg-white shadow-lg flex flex-col">
-          {/* Contract Text - TAKES MOST OF SCREEN */}
           <div
-            className="overflow-y-scroll p-3 border-b border-slate-200"
+            className="contract-body overflow-y-scroll p-3"
             style={{
-              height: "calc(100vh - 300px)",
-              maxHeight: "calc(100vh - 300px)",
+              height: "calc(100vh - 380px)",
+              maxHeight: "calc(100vh - 380px)",
             }}
           >
             <div
@@ -8713,205 +7865,779 @@ const ContractView = ({
                 transformOrigin: "top left",
                 width: `${100 / (zoomLevel / 100)}%`,
               }}
-              dangerouslySetInnerHTML={{ __html: contractText }}
+              dangerouslySetInnerHTML={{ __html: contractWithSignatures }}
             />
-          </div>
-
-          {/* SIGNATURE PROCESS */}
-          <div className="flex-shrink-0 bg-slate-50 px-2 py-1">
-            {/* Process Status */}
-            <div className="text-xs font-medium text-slate-700 mb-2">
-              {signatureProcess === "pending" && "Waiting for signatures..."}
-              {signatureProcess === "buyer-signed" &&
-                "Buyer signed ✓ - Waiting for Publisher..."}
-              {signatureProcess === "publisher-signed" &&
-                "Publisher signed ✓ - Waiting for Buyer..."}
-              {signatureProcess === "completed" &&
-                "✓ Both parties signed - Document ready for download!"}
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              {/* Buyer Signature */}
-              <div>
-                <div className="text-sm font-medium text-slate-700 mb-2">
-                  Buyer Signature {buyerSigned && "✓"}
-                </div>
-                <div className="h-24 border-2 border-slate-300 rounded bg-white overflow-hidden relative">
-                  {buyerSignatureData ? (
-                    <div className="w-full h-full flex items-center justify-center bg-slate-50 group">
-                      <img 
-                        src={buyerSignatureData} 
-                        alt="Buyer Signature" 
-                        className="max-h-full max-w-full object-contain"
-                      />
-                      {!saving && (
-                        <button
-                          onClick={() => {
-                            if (window.confirm("Are you sure you want to clear this signature?")) {
-                              setBuyerSignatureData(null);
-                              setBuyerSigned(false);
-                            }
-                          }}
-                          className="absolute inset-0 bg-black/50 text-white text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
-                        >
-                          Click to Re-sign
-                        </button>
-                      )}
-                    </div>
-                  ) : (
-                    <SignatureCanvas
-                      canvasProps={{ className: "w-full h-full" }}
-                      ref={(ref) => {
-                        buyerCanvasRef.current = ref;
-                      }}
-                    />
-                  )}
-                </div>
-                <div className="text-xs text-slate-500 mt-1 mb-2">
-                  {formData?.buyer?.companyName} Authorized Signatory
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!buyerSignatureData && buyerCanvasRef.current && !buyerCanvasRef.current.isEmpty()) {
-                      const signatureData = buyerCanvasRef.current.toDataURL();
-                      onSubmitSignature("buyer", signatureData);
-                    } else if (buyerSignatureData) {
-                      // Already signed/saved
-                    }
-                  }}
-                  disabled={saving || (buyerSigned && !!buyerSignatureData)}
-                  className={`w-full rounded px-3 py-2 text-xs text-white transition-colors flex items-center justify-center gap-2 ${
-                    formData?.contractType === "CPL2" ||
-                    formData?.type === "CPL2"
-                      ? "bg-[#0d1130] hover:bg-[#08c1bd]"
-                      : "bg-[#24bd68] hover:bg-[#1ea456]"
-                  } disabled:opacity-50 disabled:cursor-not-allowed`}
-                >
-                  {saving && <Loader2 className="h-3 w-3 animate-spin" />}
-                  {buyerSigned ? "✓ Buyer Signed" : "Submit Buyer Signature"}
-                </button>
-              </div>
-
-              {/* Publisher Signature */}
-              <div>
-                <div className="text-sm font-medium text-slate-700 mb-2">
-                  Publisher Signature {publisherSigned && "✓"}
-                </div>
-                <div className="h-24 border-2 border-slate-300 rounded bg-white overflow-hidden relative">
-                  {publisherSignatureData ? (
-                    <div className="w-full h-full flex items-center justify-center bg-slate-50 group">
-                      <img 
-                        src={publisherSignatureData} 
-                        alt="Publisher Signature" 
-                        className="max-h-full max-w-full object-contain"
-                      />
-                      {!saving && (
-                        <button
-                          onClick={() => {
-                            if (window.confirm("Are you sure you want to clear this signature?")) {
-                              setPublisherSignatureData(null);
-                              setPublisherSigned(false);
-                            }
-                          }}
-                          className="absolute inset-0 bg-black/50 text-white text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
-                        >
-                          Click to Re-sign
-                        </button>
-                      )}
-                    </div>
-                  ) : (
-                    <SignatureCanvas
-                      canvasProps={{ className: "w-full h-full" }}
-                      ref={(ref) => {
-                        publisherCanvasRef.current = ref;
-                      }}
-                    />
-                  )}
-                </div>
-                <div className="text-xs text-slate-500 mt-1 mb-2">
-                  {formData?.publisher?.companyName} Authorized Signatory
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!publisherSignatureData && publisherCanvasRef.current && !publisherCanvasRef.current.isEmpty()) {
-                      const signatureData = publisherCanvasRef.current.toDataURL();
-                      onSubmitSignature("publisher", signatureData);
-                    } else if (publisherSignatureData) {
-                      // Already signed/saved
-                    }
-                  }}
-                  disabled={saving || (publisherSigned && !!publisherSignatureData)}
-                  className={`w-full rounded px-3 py-2 text-xs text-white transition-colors flex items-center justify-center gap-2 ${
-                    formData?.contractType === "CPL2" ||
-                    formData?.type === "CPL2"
-                      ? "bg-[#0d1130] hover:bg-[#08c1bd]"
-                      : "bg-[#24bd68] hover:bg-[#1ea456]"
-                  } disabled:opacity-50 disabled:cursor-not-allowed`}
-                >
-                  {saving && <Loader2 className="h-3 w-3 animate-spin" />}
-                  {publisherSigned
-                    ? "✓ Publisher Signed"
-                    : "Submit Publisher Signature"}
-                </button>
-              </div>
-            </div>
-
-            <div className="flex gap-2 mt-1">
-              {signatureProcess === "completed" ? (
-                <button
-                  type="button"
-                  onClick={onDownloadPDF}
-                  className="rounded bg-emerald-600 px-3 py-1 text-xs text-white hover:bg-emerald-700"
-                >
-                  📥 Download Signed Document (PDF)
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  disabled
-                  className="rounded bg-slate-400 px-3 py-1 text-xs text-white"
-                >
-                  {signatureProcess === "pending" &&
-                    "Waiting for signatures..."}
-                  {signatureProcess === "buyer-signed" &&
-                    "Waiting for Publisher..."}
-                  {signatureProcess === "publisher-signed" &&
-                    "Waiting for Buyer..."}
-                </button>
-              )}
-            </div>
           </div>
         </div>
       </div>
 
-      {/* Navigation Buttons for Contract View */}
-      <div className="flex justify-between items-center p-4 bg-white border-t border-slate-200">
-        <button
-          type="button"
-          onClick={onReset}
-          className="inline-flex items-center gap-2 rounded-lg border-2 border-indigo-600 bg-indigo-600 px-6 py-3 text-lg font-bold text-white shadow-lg transition hover:bg-indigo-700 hover:shadow-xl"
-        >
-          <ArrowLeft className="h-6 w-6" />
-          PREVIOUS
-        </button>
+      {/* Signature Section */}
+      <div className="flex-shrink-0 mx-2 mt-2 mb-1">
+        <div className="rounded-lg border-2 bg-white shadow-lg p-4" style={{ borderColor: bothSigned ? "#2EAC6D" : "#5BC894" }}>
+          {/* Status Banner */}
+          <div
+            className="rounded-lg px-4 py-2 mb-3 text-center text-sm font-bold"
+            style={{
+              backgroundColor: bothSigned ? "#f0fdf4" : "#F0FAF5",
+              color: bothSigned ? "#166534" : "#143B5E",
+              border: `1px solid ${bothSigned ? "#bbf7d0" : "#5BC894"}`,
+            }}
+          >
+            {!buyerSigned && !publisherSigned && "Both parties must sign below to execute this agreement"}
+            {buyerSigned && !publisherSigned && "\u2713 Buyer has signed \u2014 Awaiting Publisher signature"}
+            {!buyerSigned && publisherSigned && "\u2713 Publisher has signed \u2014 Awaiting Buyer signature"}
+            {bothSigned && "\u2705 Agreement fully executed by both parties \u2014 Ready for download"}
+          </div>
 
-        <div className="text-sm text-slate-600 font-medium">
-          Contract Generated - Step 5 of 5
+          <div className="grid grid-cols-2 gap-6">
+            {/* BUYER SIGNATURE */}
+            <div className={`rounded-lg border-2 p-3 ${buyerSigned ? "border-green-400 bg-green-50" : "border-slate-200 bg-slate-50"}`}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-bold" style={{ color: "#143B5E" }}>
+                  Buyer / Agency Signature
+                </span>
+                {buyerSigned && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">
+                    <CheckCircle2 className="h-3 w-3" /> Signed
+                  </span>
+                )}
+              </div>
+
+              {buyerSigned ? (
+                <div className="space-y-2">
+                  <div className="h-20 rounded border border-green-300 bg-white flex items-center justify-center">
+                    {buyerSignatureData && (
+                      <img src={buyerSignatureData} alt="Buyer Signature" style={{ maxHeight: "70px", maxWidth: "90%" }} />
+                    )}
+                  </div>
+                  <div className="text-xs text-slate-600">
+                    <strong>Printed Name:</strong> {buyerPrintedName || "\u2014"}
+                  </div>
+                  <div className="text-xs text-slate-600">
+                    <strong>Date Signed:</strong> {buyerSignDate}
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="rounded border-2 border-dashed border-slate-300 bg-white" style={{ height: "80px" }}>
+                    <SignatureCanvas
+                      ref={buyerPadRef}
+                      penColor="#000000"
+                      canvasProps={{
+                        className: "w-full h-full",
+                        style: { width: "100%", height: "80px", borderRadius: "4px" },
+                      }}
+                    />
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Type full legal name"
+                    className="w-full rounded border border-slate-300 px-3 py-1.5 text-sm"
+                    value={buyerPrintedName}
+                    onChange={(e) => setBuyerPrintedName(e.target.value)}
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleBuyerSign}
+                      disabled={!buyerPrintedName.trim()}
+                      className="flex-1 rounded py-2 text-xs font-bold text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{ backgroundColor: "#143B5E" }}
+                    >
+                      Submit Buyer Signature
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleClearBuyer}
+                      className="rounded border border-slate-300 bg-white px-3 py-2 text-xs text-slate-600 hover:bg-slate-50"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-slate-400">
+                    Draw your signature above, type your legal name, then click Submit.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* PUBLISHER SIGNATURE */}
+            <div className={`rounded-lg border-2 p-3 ${publisherSigned ? "border-green-400 bg-green-50" : "border-slate-200 bg-slate-50"}`}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-bold" style={{ color: "#143B5E" }}>
+                  Publisher / Recruiter Signature
+                </span>
+                {publisherSigned && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">
+                    <CheckCircle2 className="h-3 w-3" /> Signed
+                  </span>
+                )}
+              </div>
+
+              {publisherSigned ? (
+                <div className="space-y-2">
+                  <div className="h-20 rounded border border-green-300 bg-white flex items-center justify-center">
+                    {publisherSignatureData && (
+                      <img src={publisherSignatureData} alt="Publisher Signature" style={{ maxHeight: "70px", maxWidth: "90%" }} />
+                    )}
+                  </div>
+                  <div className="text-xs text-slate-600">
+                    <strong>Printed Name:</strong> {publisherPrintedName || "\u2014"}
+                  </div>
+                  <div className="text-xs text-slate-600">
+                    <strong>Date Signed:</strong> {publisherSignDate}
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="rounded border-2 border-dashed border-slate-300 bg-white" style={{ height: "80px" }}>
+                    <SignatureCanvas
+                      ref={publisherPadRef}
+                      penColor="#000000"
+                      canvasProps={{
+                        className: "w-full h-full",
+                        style: { width: "100%", height: "80px", borderRadius: "4px" },
+                      }}
+                    />
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Type full legal name"
+                    className="w-full rounded border border-slate-300 px-3 py-1.5 text-sm"
+                    value={publisherPrintedName}
+                    onChange={(e) => setPublisherPrintedName(e.target.value)}
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handlePublisherSign}
+                      disabled={!publisherPrintedName.trim()}
+                      className="flex-1 rounded py-2 text-xs font-bold text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{ backgroundColor: "#143B5E" }}
+                    >
+                      Submit Publisher Signature
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleClearPublisher}
+                      className="rounded border border-slate-300 bg-white px-3 py-2 text-xs text-slate-600 hover:bg-slate-50"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-slate-400">
+                    Draw your signature above, type your legal name, then click Submit.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Download Buttons when fully signed */}
+          {bothSigned && (
+            <div className="mt-3 flex gap-2 justify-center">
+              <button
+                type="button"
+                onClick={handleSignedPDF}
+                className="inline-flex items-center gap-2 rounded-lg px-6 py-2.5 text-sm font-bold text-white shadow-lg"
+                style={{ backgroundColor: "#2EAC6D" }}
+              >
+                <FileText className="h-4 w-4" />
+                Download Fully Signed PDF
+              </button>
+              <button
+                type="button"
+                onClick={onPrint}
+                className="inline-flex items-center gap-2 rounded-lg border-2 px-6 py-2.5 text-sm font-bold shadow-lg"
+                style={{ borderColor: "#143B5E", color: "#143B5E" }}
+              >
+                Print Signed Agreement
+              </button>
+            </div>
+          )}
         </div>
+      </div>
 
+      {/* Bottom Navigation */}
+      <div className="flex-shrink-0 flex justify-between items-center px-4 py-2 border-t border-slate-200 bg-white">
         <button
           type="button"
           onClick={onReset}
-          className="inline-flex items-center gap-2 rounded-lg border-2 border-indigo-600 bg-indigo-600 px-6 py-3 text-lg font-bold text-white shadow-lg transition hover:bg-indigo-700 hover:shadow-xl"
+          className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold text-white shadow"
+          style={{ backgroundColor: "#143B5E" }}
         >
-          START OVER
-          <ArrowRight className="h-6 w-6" />
+          <ArrowLeft className="h-4 w-4" />
+          BACK TO EDITOR
+        </button>
+        <div className="text-xs text-slate-500">
+          {bothSigned
+            ? "Agreement fully executed"
+            : `${(buyerSigned ? 1 : 0) + (publisherSigned ? 1 : 0)} of 2 signatures collected`}
+        </div>
+        <button
+          type="button"
+          onClick={onReset}
+          className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold text-white shadow"
+          style={{ backgroundColor: "#143B5E" }}
+        >
+          START NEW CONTRACT
+          <ArrowRight className="h-4 w-4" />
         </button>
       </div>
     </div>
   );
 };
 
+// â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
+// ContractSigningPage â€” Standalone signing view for shareable links
+// Loads contract from Firestore, displays it, and allows each party to sign independently
+// â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
+const ContractSigningPage = ({ contractId, db }) => {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [contractData, setContractData] = useState(null);
+  const [signingAs, setSigningAs] = useState(null); // "buyer" | "publisher" | null
+  const [printedName, setPrintedName] = useState("");
+  const [signing, setSigning] = useState(false);
+  const [signed, setSigned] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(100);
+
+  const sigPadRef = useRef(null);
+
+  // Parse userId:docId from contractId
+  const [userId, docId] = contractId.includes(":")
+    ? contractId.split(":")
+    : [null, null];
+
+  // Load contract from Firestore
+  useEffect(() => {
+    if (!db || !userId || !docId) {
+      setError("Invalid signing link format.");
+      setLoading(false);
+      return;
+    }
+    const loadContract = async () => {
+      try {
+        setLoading(true);
+        const docSnap = await getDoc(doc(db, "users", userId, "insertionOrders", docId));
+        if (!docSnap.exists()) {
+          setError("Contract not found. The link may be invalid or expired.");
+          return;
+        }
+        const data = docSnap.data();
+        if (!data.signingData) {
+          setError("This contract does not have signing data.");
+          return;
+        }
+        // Flatten signingData into a convenient shape for the component
+        setContractData({
+          ...data.signingData,
+          formData: data.form,
+        });
+      } catch (err) {
+        setError(err.message || "Failed to load contract.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadContract();
+  }, [db, userId, docId]);
+
+  // Determine which party needs to sign
+  useEffect(() => {
+    if (!contractData) return;
+    if (!contractData.buyerSignature && !contractData.publisherSignature) {
+      setSigningAs("buyer");
+    } else if (contractData.buyerSignature && !contractData.publisherSignature) {
+      setSigningAs("publisher");
+    } else if (!contractData.buyerSignature && contractData.publisherSignature) {
+      setSigningAs("buyer");
+    } else {
+      setSigningAs(null); // fully signed
+    }
+  }, [contractData]);
+
+  // Build contract HTML with any existing signatures
+  const contractHtmlWithSigs = useMemo(() => {
+    if (!contractData?.contractHtml) return "";
+    let html = contractData.contractHtml;
+
+    // Inject buyer signature if present
+    if (contractData.buyerSignature?.data) {
+      html = html.replace(
+        /(<div style="border: 1px solid #000; height: 50px;[^"]*display: flex; align-items: center; justify-content: center;">\s*)(<div style="height: 40px;"><\/div>\s*)(<\/div>\s*<div style="font-size: 14px; font-weight: bold;">Buyer Signature)/s,
+        `$1<img src="${contractData.buyerSignature.data}" style="max-height: 45px; max-width: 95%;" />$3`
+      );
+      // Replace first date placeholder
+      if (contractData.buyerSignature.signedAt) {
+        const buyerDate = contractData.buyerSignature.signedAt?.toDate
+          ? contractData.buyerSignature.signedAt.toDate().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+          : new Date(contractData.buyerSignature.signedAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+        html = html.replace(
+          "Date: _______________",
+          `Date: ${buyerDate}`
+        );
+      }
+    }
+
+    // Inject publisher signature if present
+    if (contractData.publisherSignature?.data) {
+      html = html.replace(
+        /(<div style="border: 1px solid #000; height: 50px;[^"]*display: flex; align-items: center; justify-content: center;">\s*)(<div style="height: 40px;"><\/div>\s*)(<\/div>\s*<div style="font-size: 14px; font-weight: bold;">Publisher Signature)/s,
+        `$1<img src="${contractData.publisherSignature.data}" style="max-height: 45px; max-width: 95%;" />$3`
+      );
+      if (contractData.publisherSignature.signedAt) {
+        const pubDate = contractData.publisherSignature.signedAt?.toDate
+          ? contractData.publisherSignature.signedAt.toDate().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+          : new Date(contractData.publisherSignature.signedAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+        html = html.replace(
+          "Date: _______________",
+          `Date: ${pubDate}`
+        );
+      }
+    }
+
+    return html;
+  }, [contractData]);
+
+  const handleSign = async () => {
+    if (!sigPadRef.current || sigPadRef.current.isEmpty()) {
+      setError("Please draw your signature before submitting.");
+      return;
+    }
+    if (!printedName.trim()) {
+      setError("Please type your full legal name.");
+      return;
+    }
+
+    setError(null);
+    setSigning(true);
+
+    try {
+      const signatureData = sigPadRef.current.toDataURL("image/png");
+      const signedAt = new Date().toISOString();
+
+      const sigObj = {
+        data: signatureData,
+        mode: "drawn",
+        signedAt,
+        signerName: printedName.trim(),
+      };
+
+      const buyerAlreadySigned = !!contractData.buyerSignature;
+      const publisherAlreadySigned = !!contractData.publisherSignature;
+
+      let newStatus;
+      if (signingAs === "buyer") {
+        newStatus = publisherAlreadySigned ? "fully_signed" : "awaiting_publisher";
+      } else {
+        newStatus = buyerAlreadySigned ? "fully_signed" : "awaiting_buyer";
+      }
+
+      await updateDoc(doc(db, "users", userId, "insertionOrders", docId), {
+        [`signingData.${signingAs}Signature`]: sigObj,
+        ["signingData.status"]: newStatus,
+        updatedAt: serverTimestamp(),
+      });
+
+      // Update local state
+      setContractData(prev => ({
+        ...prev,
+        [`${signingAs}Signature`]: { ...sigObj, signedAt },
+        status: newStatus,
+      }));
+
+      setSigned(true);
+    } catch (err) {
+      setError(err.message || "Failed to save signature.");
+    } finally {
+      setSigning(false);
+    }
+  };
+
+  const handleClearPad = () => {
+    sigPadRef.current?.clear();
+  };
+
+  const handleCopyLink = () => {
+    const url = `${window.location.origin}${window.location.pathname}?sign=${contractId}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 3000);
+    });
+  };
+
+  const handleDownloadPDF = () => {
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = contractHtmlWithSigs;
+    tempDiv.className = "contract-body";
+    tempDiv.style.position = "absolute";
+    tempDiv.style.left = "-9999px";
+    tempDiv.style.top = "0";
+    document.body.appendChild(tempDiv);
+
+    const opt = {
+      margin: [0.3, 0.3, 0.3, 0.3],
+      filename: `signed-agreement-${contractId.slice(0, 8)}-${Date.now()}.pdf`,
+      image: { type: "jpeg", quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+      jsPDF: { unit: "in", format: "letter", orientation: "portrait" },
+    };
+
+    html2pdf().set(opt).from(tempDiv).save().then(() => {
+      document.body.removeChild(tempDiv);
+    });
+  };
+
+  const handleGoHome = () => {
+    window.location.href = window.location.origin + window.location.pathname;
+  };
+
+  const isFullySigned = contractData?.status === "fully_signed" ||
+    (contractData?.buyerSignature && contractData?.publisherSignature);
+
+  const buyerLabel = contractData?.partyLabels?.buyer || "Buyer";
+  const publisherLabel = contractData?.partyLabels?.publisher || "Publisher";
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "linear-gradient(135deg, #0f172a 0%, #143B5E 50%, #0f172a 100%)" }}>
+        <div className="text-center space-y-4">
+          <div className="relative mx-auto" style={{ width: "80px", height: "80px" }}>
+            <div className="absolute inset-0 rounded-full border-4 border-slate-700" />
+            <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-emerald-400 animate-spin" />
+          </div>
+          <h2 className="text-xl font-bold text-white">Loading Agreement</h2>
+          <p className="text-sm text-slate-400">Retrieving contract for signing...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error && !contractData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "linear-gradient(135deg, #0f172a 0%, #143B5E 50%, #0f172a 100%)" }}>
+        <div className="bg-white rounded-2xl p-8 shadow-2xl max-w-md text-center space-y-4">
+          <div className="h-16 w-16 mx-auto rounded-full bg-rose-100 flex items-center justify-center">
+            <ShieldCheck className="h-8 w-8 text-rose-500" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900">Unable to Load Agreement</h2>
+          <p className="text-sm text-slate-600">{error}</p>
+          <button
+            onClick={handleGoHome}
+            className="inline-flex items-center gap-2 rounded-lg px-6 py-2.5 text-sm font-bold text-white"
+            style={{ backgroundColor: "#143B5E" }}
+          >
+            <ArrowLeft className="h-4 w-4" /> Return Home
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col" style={{ background: "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)" }}>
+      {/* Top Header Bar */}
+      <header className="flex-shrink-0 border-b shadow-sm" style={{ backgroundColor: "#143B5E" }}>
+        <div className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <img src="/pvnvoice.png" alt="PVNVoice" style={{ height: "28px" }} />
+            <div>
+              <h1 className="text-base font-bold text-white">PVNVoice Legal</h1>
+              <p className="text-xs text-slate-300">Secure Electronic Signature</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            {/* Status Badge */}
+            <span
+              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold"
+              style={{
+                backgroundColor: isFullySigned ? "#dcfce7" : "#fef3c7",
+                color: isFullySigned ? "#166534" : "#92400e",
+              }}
+            >
+              {isFullySigned ? (
+                <><CheckCircle2 className="h-3.5 w-3.5" /> Fully Executed</>
+              ) : contractData?.buyerSignature ? (
+                <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Awaiting {publisherLabel}</>
+              ) : contractData?.publisherSignature ? (
+                <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Awaiting {buyerLabel}</>
+              ) : (
+                <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Awaiting Signatures</>
+              )}
+            </span>
+            <button
+              onClick={handleGoHome}
+              className="rounded-lg border border-slate-500 px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-600 hover:text-white transition"
+            >
+              <ArrowLeft className="h-3 w-3 inline mr-1" /> Home
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col lg:flex-row max-w-7xl mx-auto w-full p-4 gap-4">
+        {/* Contract Preview */}
+        <div className="flex-1 flex flex-col min-h-0">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-bold text-slate-700">Agreement Preview</h2>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-500">Zoom:</span>
+              <select
+                value={zoomLevel}
+                onChange={(e) => setZoomLevel(Number(e.target.value))}
+                className="rounded border border-slate-300 bg-white px-1 py-0.5 text-xs"
+              >
+                <option value={50}>50%</option>
+                <option value={75}>75%</option>
+                <option value={100}>100%</option>
+                <option value={125}>125%</option>
+                <option value={150}>150%</option>
+              </select>
+            </div>
+          </div>
+          <div className="flex-1 rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden">
+            <div
+              className="contract-body overflow-y-auto p-4"
+              style={{ height: "calc(100vh - 200px)" }}
+            >
+              <div
+                className="prose prose-slate max-w-none text-xs leading-relaxed"
+                style={{
+                  transform: `scale(${zoomLevel / 100})`,
+                  transformOrigin: "top left",
+                  width: `${100 / (zoomLevel / 100)}%`,
+                }}
+                dangerouslySetInnerHTML={{ __html: contractHtmlWithSigs }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Signature Panel */}
+        <div className="w-full lg:w-96 flex-shrink-0 space-y-4">
+          {/* Signing Progress */}
+          <div className="rounded-xl border-2 bg-white p-5 shadow-lg" style={{ borderColor: isFullySigned ? "#2EAC6D" : "#5BC894" }}>
+            <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4" style={{ color: "#2EAC6D" }} />
+              Signature Status
+            </h3>
+
+            {/* Buyer Status */}
+            <div className={`rounded-lg p-3 mb-2 border ${contractData?.buyerSignature ? "border-green-300 bg-green-50" : "border-slate-200 bg-slate-50"}`}>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-700">{buyerLabel}</span>
+                {contractData?.buyerSignature ? (
+                  <span className="inline-flex items-center gap-1 text-xs font-bold text-green-700">
+                    <CheckCircle2 className="h-3 w-3" /> Signed
+                  </span>
+                ) : (
+                  <span className="text-xs text-amber-600 font-medium">Pending</span>
+                )}
+              </div>
+              {contractData?.buyerSignature && (
+                <div className="mt-2 space-y-1">
+                  <div className="h-12 rounded border border-green-200 bg-white flex items-center justify-center">
+                    <img src={contractData.buyerSignature.data} alt="Buyer Signature" style={{ maxHeight: "40px", maxWidth: "90%" }} />
+                  </div>
+                  <p className="text-[10px] text-slate-500"><strong>Name:</strong> {contractData.buyerSignature.signerName}</p>
+                  <p className="text-[10px] text-slate-500">
+                    <strong>Date:</strong> {
+                      contractData.buyerSignature.signedAt?.toDate
+                        ? contractData.buyerSignature.signedAt.toDate().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+                        : new Date(contractData.buyerSignature.signedAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+                    }
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Publisher Status */}
+            <div className={`rounded-lg p-3 border ${contractData?.publisherSignature ? "border-green-300 bg-green-50" : "border-slate-200 bg-slate-50"}`}>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-700">{publisherLabel}</span>
+                {contractData?.publisherSignature ? (
+                  <span className="inline-flex items-center gap-1 text-xs font-bold text-green-700">
+                    <CheckCircle2 className="h-3 w-3" /> Signed
+                  </span>
+                ) : (
+                  <span className="text-xs text-amber-600 font-medium">Pending</span>
+                )}
+              </div>
+              {contractData?.publisherSignature && (
+                <div className="mt-2 space-y-1">
+                  <div className="h-12 rounded border border-green-200 bg-white flex items-center justify-center">
+                    <img src={contractData.publisherSignature.data} alt="Publisher Signature" style={{ maxHeight: "40px", maxWidth: "90%" }} />
+                  </div>
+                  <p className="text-[10px] text-slate-500"><strong>Name:</strong> {contractData.publisherSignature.signerName}</p>
+                  <p className="text-[10px] text-slate-500">
+                    <strong>Date:</strong> {
+                      contractData.publisherSignature.signedAt?.toDate
+                        ? contractData.publisherSignature.signedAt.toDate().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+                        : new Date(contractData.publisherSignature.signedAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+                    }
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Signing Pad â€” only shown if there's still a party that needs to sign */}
+          {signingAs && !signed && (
+            <div className="rounded-xl border-2 border-blue-300 bg-white p-5 shadow-lg">
+              <h3 className="text-sm font-bold text-slate-900 mb-1 flex items-center gap-2">
+                <PenSquare className="h-4 w-4" style={{ color: "#143B5E" }} />
+                Sign as {signingAs === "buyer" ? buyerLabel : publisherLabel}
+              </h3>
+              <p className="text-[10px] text-slate-500 mb-3">
+                Draw your signature below, type your legal name, and click Submit to execute.
+              </p>
+
+              {error && (
+                <div className="mb-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+                  {error}
+                </div>
+              )}
+
+              {/* Signature Canvas */}
+              <div className="rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 mb-3" style={{ height: "120px" }}>
+                <SignatureCanvas
+                  ref={sigPadRef}
+                  penColor="#000000"
+                  canvasProps={{
+                    className: "w-full h-full",
+                    style: { width: "100%", height: "120px", borderRadius: "8px", background: "#fff" },
+                  }}
+                />
+              </div>
+
+              {/* Printed Name */}
+              <input
+                type="text"
+                placeholder="Type your full legal name"
+                className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm mb-3 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                value={printedName}
+                onChange={(e) => setPrintedName(e.target.value)}
+              />
+
+              {/* Action Buttons */}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleSign}
+                  disabled={signing || !printedName.trim()}
+                  className="flex-1 rounded-lg py-2.5 text-sm font-bold text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  style={{ backgroundColor: "#2EAC6D" }}
+                >
+                  {signing ? (
+                    <><Loader2 className="h-4 w-4 inline animate-spin mr-1" /> Signing...</>
+                  ) : (
+                    <><PenSquare className="h-4 w-4 inline mr-1" /> Submit Signature</>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleClearPad}
+                  className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 transition"
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Post-signing success message */}
+          {signed && !isFullySigned && (
+            <div className="rounded-xl border-2 border-green-400 bg-green-50 p-5 shadow-lg text-center space-y-3">
+              <div className="h-12 w-12 mx-auto rounded-full bg-green-100 flex items-center justify-center">
+                <CheckCircle2 className="h-6 w-6 text-green-600" />
+              </div>
+              <h3 className="text-sm font-bold text-green-800">Signature Submitted!</h3>
+              <p className="text-xs text-green-700">
+                Share this link with the other party to complete the signing:
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={`${window.location.origin}${window.location.pathname}?sign=${contractId}`}
+                  className="flex-1 rounded-lg border border-green-300 bg-white px-3 py-2 text-xs text-slate-700"
+                />
+                <button
+                  onClick={handleCopyLink}
+                  className="rounded-lg px-4 py-2 text-xs font-bold text-white"
+                  style={{ backgroundColor: "#143B5E" }}
+                >
+                  {linkCopied ? "Copied!" : "Copy"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Share Link â€” shown right after initial load when buyer has signed */}
+          {!signed && contractData?.buyerSignature && !contractData?.publisherSignature && (
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow">
+              <h4 className="text-xs font-bold text-slate-700 mb-2 flex items-center gap-1">
+                <Send className="h-3 w-3" /> Share Signing Link
+              </h4>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={`${window.location.origin}${window.location.pathname}?sign=${contractId}`}
+                  className="flex-1 rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-600"
+                />
+                <button
+                  onClick={handleCopyLink}
+                  className="rounded-lg px-3 py-2 text-xs font-bold text-white transition"
+                  style={{ backgroundColor: "#143B5E" }}
+                >
+                  {linkCopied ? "âœ“ Copied!" : "Copy Link"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Download Section */}
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow space-y-2">
+            <h4 className="text-xs font-bold text-slate-700 flex items-center gap-1">
+              <FileText className="h-3 w-3" /> Download
+            </h4>
+            <button
+              onClick={handleDownloadPDF}
+              className="w-full rounded-lg py-2.5 text-sm font-bold text-white transition-all shadow"
+              style={{ backgroundColor: isFullySigned ? "#2EAC6D" : "#143B5E" }}
+            >
+              <FileText className="h-4 w-4 inline mr-1" />
+              {isFullySigned ? "Download Fully Signed PDF" : "Download Current PDF"}
+            </button>
+            <p className="text-[10px] text-slate-400 text-center">
+              {isFullySigned
+                ? "This PDF contains all signatures and is the final executed agreement."
+                : "Current PDF will show only signatures collected so far."}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <footer className="flex-shrink-0 border-t border-slate-200 bg-white py-3">
+        <div className="max-w-6xl mx-auto px-6 flex items-center justify-between">
+          <p className="text-xs text-slate-400">
+            Powered by PVNVoice Legal &bull; Secure Electronic Signing
+          </p>
+          <p className="text-xs text-slate-400">
+            Contract ID: {contractId.slice(0, 12)}...
+          </p>
+        </div>
+      </footer>
+    </div>
+  );
+};
+
 export default InsertionOrderGenerator;
+
