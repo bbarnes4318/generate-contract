@@ -102,9 +102,21 @@ const CAMPAIGN_TYPES = [
 ];
 
 const ACA_SUB_TYPES = [
-  { value: "Partnership", label: "ACA Partnership", description: "NPN Override + Per Policy + Agent Bonus residual structure" },
-  { value: "CPL", label: "ACA CPL (Cost Per Lead/Call)", description: "Payout per qualified call exceeding duration threshold" },
-  { value: "CPA", label: "ACA CPA (Cost Per Acquisition)", description: "Payout per qualified enrollment/policy sale" },
+  {
+    value: "Partnership",
+    label: "ACA Partnership",
+    description: "NPN Override + Per Policy + Agent Bonus residual structure",
+  },
+  {
+    value: "CPL",
+    label: "ACA CPL (Cost Per Lead/Call)",
+    description: "Payout per qualified call exceeding duration threshold",
+  },
+  {
+    value: "CPA",
+    label: "ACA CPA (Cost Per Acquisition)",
+    description: "Payout per qualified enrollment/policy sale",
+  },
 ];
 
 const PROOF_OF_CONSENT_OPTIONS = ["Jornaya", "Trusted Form", "None"];
@@ -1087,16 +1099,16 @@ const buildContractTemplate = (
 <h1>5.7 PAYMENT STRUCTURE AND TERMS</h1>
 
 <p><span class="section-number">5.7.1</span> NPN Override Payments: Recruiter shall receive ${formatCurrency(
-            formData?.acaNpnOverride || "Not Provided",
-          )} per month for each Active Policy sold under recruited agents' NPN numbers. This payment continues monthly for as long as the customer maintains their policy and the policy remains in force with the carrier.</p>
+              formData?.acaNpnOverride || "Not Provided",
+            )} per month for each Active Policy sold under recruited agents' NPN numbers. This payment continues monthly for as long as the customer maintains their policy and the policy remains in force with the carrier.</p>
 
 <p><span class="section-number">5.7.2</span> Per Policy Payments: Recruiter shall receive ${formatCurrency(
-            formData?.acaPerPolicy || "Not Provided",
-          )} for each ACA policy sale completed by recruited agents, paid weekly (one week after the sale is completed and confirmed by the carrier).</p>
+              formData?.acaPerPolicy || "Not Provided",
+            )} for each ACA policy sale completed by recruited agents, paid weekly (one week after the sale is completed and confirmed by the carrier).</p>
 
 <p><span class="section-number">5.7.3</span> Agent Bonus Payments: Recruiter shall receive an additional ${formatCurrency(
-            formData?.acaAgentBonus || "Not Provided",
-          )} per month for each Active Policy sold by recruited agents, paid monthly with the same residual structure as NPN Override payments.</p>
+              formData?.acaAgentBonus || "Not Provided",
+            )} per month for each Active Policy sold by recruited agents, paid monthly with the same residual structure as NPN Override payments.</p>
 
 <p><span class="section-number">5.7.4</span> Payment Timing: Sales completed before December 8th of each year will count toward January residual payments. Sales completed on or after December 8th will count toward February residual payments.</p>
 
@@ -2112,27 +2124,38 @@ My Commission Expires: ${ensureValue(formData?.llcNotaryExpiration)}</p>
 <h2>RECITALS</h2>
 
 <div class="recitals">
-<p><strong>WHEREAS,</strong> ${
-    formData?.type === "Employment Contract"
-      ? `the Employer desires to engage the Employee as a ${ensureValue(
-          formData?.jobTitle,
-        )} and the Employee desires to accept such employment`
-      : formData?.type === "ACA Health"
-        ? "the ACA Insurance Agency requires qualified agents to sell ACA health insurance policies and the Recruiter specializes in recruiting and hiring such agents"
-        : "Publisher specializes in sourcing and qualifying inbound telemarketing calls for compliant pay-per-call campaigns"
-  }; and</p>
+${
+  formData?.type === "ACA Health" &&
+  (formData?.acaSubType === "CPA" || formData?.acaSubType === "CPL")
+    ? `<p><strong>WHEREAS,</strong> Publisher specializes in sourcing and qualifying inbound telemarketing calls for compliant pay-per-call campaigns; and</p>
 
-<p><strong>WHEREAS,</strong> ${
-    formData?.type === "Employment Contract"
-      ? "the Parties desire to establish the terms and conditions of employment, including compensation, benefits, duties, and responsibilities"
-      : formData?.type === "ACA Health"
-        ? "the Agency desires to engage the Recruiter for agent recruitment services to build their agent network"
-        : "Buyer desires to receive such calls and compensate Publisher"
-  } pursuant to the commercial terms set forth in this Agreement; and</p>
+<p><strong>WHEREAS,</strong> Buyer desires to receive such calls and compensate Publisher pursuant to the commercial terms set forth in this Agreement; and</p>
 
 <p><strong>WHEREAS,</strong> the Parties wish to memorialize their respective obligations, representations, warranties, and indemnities in a binding writing enforceable under Applicable Law.</p>
 
-<p><strong>NOW, THEREFORE,</strong> in consideration of the mutual covenants and promises contained herein, the Parties agree as follows:</p>
+<p><strong>NOW, THEREFORE,</strong> in consideration of the mutual covenants and promises contained herein, the Parties agree as follows:</p>`
+    : `<p><strong>WHEREAS,</strong> ${
+        formData?.type === "Employment Contract"
+          ? `the Employer desires to engage the Employee as a ${ensureValue(
+              formData?.jobTitle,
+            )} and the Employee desires to accept such employment`
+          : formData?.type === "ACA Health"
+            ? "the ACA Insurance Agency requires qualified agents to sell ACA health insurance policies and the Recruiter specializes in recruiting and hiring such agents"
+            : "Publisher specializes in sourcing and qualifying inbound telemarketing calls for compliant pay-per-call campaigns"
+      }; and</p>
+
+<p><strong>WHEREAS,</strong> ${
+        formData?.type === "Employment Contract"
+          ? "the Parties desire to establish the terms and conditions of employment, including compensation, benefits, duties, and responsibilities"
+          : formData?.type === "ACA Health"
+            ? "the Agency desires to engage the Recruiter for agent recruitment services to build their agent network"
+            : "Buyer desires to receive such calls and compensate Publisher"
+      } pursuant to the commercial terms set forth in this Agreement; and</p>
+
+<p><strong>WHEREAS,</strong> the Parties wish to memorialize their respective obligations, representations, warranties, and indemnities in a binding writing enforceable under Applicable Law.</p>
+
+<p><strong>NOW, THEREFORE,</strong> in consideration of the mutual covenants and promises contained herein, the Parties agree as follows:</p>`
+}
 </div>
 
 <div class="separator"></div>
@@ -2521,14 +2544,15 @@ ${
 }
 
 ${
-  formData?.type === "CPA"
+  formData?.type === "CPA" ||
+  (formData?.type === "ACA Health" && formData?.acaSubType === "CPA")
     ? `<p><span class="section-number">5.5</span> <strong>Publisher Replacement Policy:</strong> Publisher will replace sales where the insured does not pay their first premium. Publisher agrees to provide replacement leads/sales at no additional cost to Buyer when a CPA conversion is charged but the insured fails to remit payment for their first premium payment.</p>`
     : ""
 }
 
 ${formData?.vertical === "Final Expense" && formData?.type === "CPA" ? `<p><span class="section-number">5.6</span> <strong>Chargeback Liability Period:</strong> Publisher shall remain liable for chargebacks, clawbacks, or policy lapses for a period of <strong>${ensureValue(formData?.chargebackLiability)}</strong> from the date of the Qualified Conversion. If a policy lapses or is charged back within this period, Publisher shall refund the full payout amount or provide a replacement conversion at Buyer's discretion.</p>` : ""}
 
-${formData?.type === "ACA Health" ? `<p><span class="section-number">5.5a</span> <strong>Chargeback Liability Period:</strong> Recruiter shall remain liable for policy chargebacks, clawbacks, or lapses for a period of <strong>${ensureValue(formData?.acaChargebackLiability)}</strong> from the date of the Active Policy. If a policy lapses or is charged back within this period, Recruiter shall refund the full payout amount or provide a replacement agent/sale at Agency's discretion.</p>` : ""}
+${formData?.type === "ACA Health" && formData?.acaSubType !== "CPA" && formData?.acaSubType !== "CPL" ? `<p><span class="section-number">5.5a</span> <strong>Chargeback Liability Period:</strong> Recruiter shall remain liable for policy chargebacks, clawbacks, or lapses for a period of <strong>${ensureValue(formData?.acaChargebackLiability)}</strong> from the date of the Active Policy. If a policy lapses or is charged back within this period, Recruiter shall refund the full payout amount or provide a replacement agent/sale at Agency's discretion.</p>` : ""}
 
 <p><span class="section-number">${formData?.vertical === "Final Expense" && formData?.type === "CPA" ? "5.7" : formData?.type === "CPA" ? "5.6" : formData?.type === "CPL" ? "5.5" : "5.3"}</span> ${
     formData?.type === "ACA Health"
@@ -3803,13 +3827,14 @@ const InsertionOrderGenerator = () => {
 
       // Include e-signature metadata directly in the main document
       const unsignedHtml = buildContractTemplate(formData, null, null);
-      const partyLabels = formData.type === "ACA Health"
-        ? (formData.acaSubType === "CPL" || formData.acaSubType === "CPA"
+      const partyLabels =
+        formData.type === "ACA Health"
+          ? formData.acaSubType === "CPL" || formData.acaSubType === "CPA"
             ? { buyer: "Buyer", publisher: "Publisher" }
-            : { buyer: "ACA Insurance Agency", publisher: "Agent Recruiter" })
-        : formData.type === "Employment Contract"
-          ? { buyer: "Employer", publisher: "Employee" }
-          : { buyer: "Buyer/Broker", publisher: "Publisher" };
+            : { buyer: "ACA Insurance Agency", publisher: "Agent Recruiter" }
+          : formData.type === "Employment Contract"
+            ? { buyer: "Employer", publisher: "Employee" }
+            : { buyer: "Buyer/Broker", publisher: "Publisher" };
 
       payload.signingData = {
         contractHtml: unsignedHtml,
@@ -5436,14 +5461,21 @@ const CampaignDetailsStep = ({ formData, onFieldChange }) => {
                       name="acaSubType"
                       value={subType.value}
                       checked={formData.acaSubType === subType.value}
-                      onChange={(e) => onFieldChange("acaSubType", e.target.value)}
+                      onChange={(e) =>
+                        onFieldChange("acaSubType", e.target.value)
+                      }
                       className="h-4 w-4 text-green-600"
                     />
-                    <span className="text-sm font-bold" style={{ color: "#263149" }}>
+                    <span
+                      className="text-sm font-bold"
+                      style={{ color: "#263149" }}
+                    >
                       {subType.label}
                     </span>
                   </div>
-                  <span className="text-xs text-slate-500 ml-6">{subType.description}</span>
+                  <span className="text-xs text-slate-500 ml-6">
+                    {subType.description}
+                  </span>
                 </label>
               ))}
             </div>
@@ -5479,7 +5511,9 @@ const CampaignDetailsStep = ({ formData, onFieldChange }) => {
                   step="1"
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   value={formData.acaPerPolicy}
-                  onChange={(e) => onFieldChange("acaPerPolicy", e.target.value)}
+                  onChange={(e) =>
+                    onFieldChange("acaPerPolicy", e.target.value)
+                  }
                   placeholder="20"
                 />
               </div>
@@ -5494,7 +5528,9 @@ const CampaignDetailsStep = ({ formData, onFieldChange }) => {
                   step="1"
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   value={formData.acaAgentBonus}
-                  onChange={(e) => onFieldChange("acaAgentBonus", e.target.value)}
+                  onChange={(e) =>
+                    onFieldChange("acaAgentBonus", e.target.value)
+                  }
                   placeholder="10"
                 />
               </div>
@@ -5514,11 +5550,14 @@ const CampaignDetailsStep = ({ formData, onFieldChange }) => {
                   step="0.01"
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   value={formData.acaCplPayout}
-                  onChange={(e) => onFieldChange("acaCplPayout", e.target.value)}
+                  onChange={(e) =>
+                    onFieldChange("acaCplPayout", e.target.value)
+                  }
                   placeholder="45"
                 />
                 <p className="text-xs text-slate-500">
-                  Amount paid per call that meets or exceeds the duration threshold.
+                  Amount paid per call that meets or exceeds the duration
+                  threshold.
                 </p>
               </div>
               <div className="space-y-2">
@@ -5528,7 +5567,9 @@ const CampaignDetailsStep = ({ formData, onFieldChange }) => {
                 <select
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   value={formData.acaCplBufferTime}
-                  onChange={(e) => onFieldChange("acaCplBufferTime", e.target.value)}
+                  onChange={(e) =>
+                    onFieldChange("acaCplBufferTime", e.target.value)
+                  }
                 >
                   {BUFFER_TIMES.map((option) => (
                     <option key={option} value={option}>
@@ -5559,7 +5600,8 @@ const CampaignDetailsStep = ({ formData, onFieldChange }) => {
                 placeholder="150"
               />
               <p className="text-xs text-slate-500">
-                Amount paid per verified ACA health insurance enrollment/policy sale.
+                Amount paid per verified ACA health insurance enrollment/policy
+                sale.
               </p>
             </div>
           )}
@@ -5614,9 +5656,7 @@ const CampaignDetailsStep = ({ formData, onFieldChange }) => {
                 step="1"
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                 value={formData.acaDuration}
-                onChange={(e) =>
-                  onFieldChange("acaDuration", e.target.value)
-                }
+                onChange={(e) => onFieldChange("acaDuration", e.target.value)}
                 placeholder="12"
               />
             </div>
@@ -5636,7 +5676,6 @@ const CampaignDetailsStep = ({ formData, onFieldChange }) => {
             </label>
           </div>
         </div>
-
       ) : formData.vertical === "Final Expense" && formData.type === "CPA" ? (
         <div className="space-y-4">
           <div className="space-y-2">
@@ -6905,7 +6944,8 @@ const ReviewGenerateStep = ({
                   {formData.acaSubType === "Partnership" && (
                     <>
                       <div>
-                        <strong>NPN Override:</strong> ${formData.acaNpnOverride}
+                        <strong>NPN Override:</strong> $
+                        {formData.acaNpnOverride}
                         /month
                       </div>
                       <div>
@@ -6920,16 +6960,19 @@ const ReviewGenerateStep = ({
                   {formData.acaSubType === "CPL" && (
                     <>
                       <div>
-                        <strong>Payout per Call:</strong> ${formData.acaCplPayout}
+                        <strong>Payout per Call:</strong> $
+                        {formData.acaCplPayout}
                       </div>
                       <div>
-                        <strong>Buffer Time:</strong> {formData.acaCplBufferTime} seconds
+                        <strong>Buffer Time:</strong>{" "}
+                        {formData.acaCplBufferTime} seconds
                       </div>
                     </>
                   )}
                   {formData.acaSubType === "CPA" && (
                     <div>
-                      <strong>Payout per Enrollment:</strong> ${formData.acaCpaPayout}
+                      <strong>Payout per Enrollment:</strong> $
+                      {formData.acaCpaPayout}
                     </div>
                   )}
                   <div>
@@ -7201,24 +7244,24 @@ const FormView = ({
               </p>
               <ul className="mt-2 space-y-1 text-xs">
                 <li>
-                  Ã¢â‚¬Â¢ Recruiter hires two types of agents for the ACA Insurance
-                  Agency
+                  Ã¢â‚¬Â¢ Recruiter hires two types of agents for the ACA
+                  Insurance Agency
                 </li>
                 <li>
                   Ã¢â‚¬Â¢ NPN Override Agents: Provide NPN numbers for agency to
                   contract under
                 </li>
                 <li>
-                  Ã¢â‚¬Â¢ Direct Sales Agents: Sell ACA health insurance policies
-                  directly
+                  Ã¢â‚¬Â¢ Direct Sales Agents: Sell ACA health insurance
+                  policies directly
                 </li>
                 <li>
-                  Ã¢â‚¬Â¢ Agency provides inbound calls and transfers to recruited
-                  agents
+                  Ã¢â‚¬Â¢ Agency provides inbound calls and transfers to
+                  recruited agents
                 </li>
                 <li>
-                  Ã¢â‚¬Â¢ All payments contingent on policy being issued and paid by
-                  carrier
+                  Ã¢â‚¬Â¢ All payments contingent on policy being issued and
+                  paid by carrier
                 </li>
                 <li>Ã¢â‚¬Â¢ Residual payments made "as earned" each month</li>
               </ul>
@@ -7328,9 +7371,7 @@ const FormView = ({
                 step="1"
                 className={INPUT_BASE_CLASSES}
                 value={formData.acaDuration}
-                onChange={(e) =>
-                  onFieldChange("acaDuration", e.target.value)
-                }
+                onChange={(e) => onFieldChange("acaDuration", e.target.value)}
                 placeholder="12"
               />
             </div>
@@ -7651,34 +7692,39 @@ const ContractView = ({
     if (buyerSignatureData && buyerSigned) {
       html = html.replace(
         /(<div style="border: 1px solid #000; height: 50px;[^"]*display: flex; align-items: center; justify-content: center;">)\s*(<div style="height: 40px;"><\/div>)\s*(<\/div>\s*<div style="font-size: 14px; font-weight: bold;">Buyer Signature)/s,
-        `$1<img src="${buyerSignatureData}" style="max-height: 45px; max-width: 95%;" />$3`
+        `$1<img src="${buyerSignatureData}" style="max-height: 45px; max-width: 95%;" />$3`,
       );
     }
 
     if (publisherSignatureData && publisherSigned) {
       html = html.replace(
         /(<div style="border: 1px solid #000; height: 50px;[^"]*display: flex; align-items: center; justify-content: center;">)\s*(<div style="height: 40px;"><\/div>)\s*(<\/div>\s*<div style="font-size: 14px; font-weight: bold;">Publisher Signature)/s,
-        `$1<img src="${publisherSignatureData}" style="max-height: 45px; max-width: 95%;" />$3`
+        `$1<img src="${publisherSignatureData}" style="max-height: 45px; max-width: 95%;" />$3`,
       );
     }
 
     // Replace date placeholders
     if (buyerSignDate) {
-      html = html.replace(
-        "Date: _______________",
-        `Date: ${buyerSignDate}`
-      );
+      html = html.replace("Date: _______________", `Date: ${buyerSignDate}`);
     }
 
     if (publisherSignDate) {
       html = html.replace(
         "Date: _______________",
-        `Date: ${publisherSignDate}`
+        `Date: ${publisherSignDate}`,
       );
     }
 
     return html;
-  }, [contractText, buyerSignatureData, publisherSignatureData, buyerSigned, publisherSigned, buyerSignDate, publisherSignDate]);
+  }, [
+    contractText,
+    buyerSignatureData,
+    publisherSignatureData,
+    buyerSigned,
+    publisherSigned,
+    buyerSignDate,
+    publisherSignDate,
+  ]);
 
   const handleBuyerSign = () => {
     if (!buyerPadRef.current || buyerPadRef.current.isEmpty()) return;
@@ -7686,9 +7732,13 @@ const ContractView = ({
     setBuyerSignatureData(dataUrl);
     setBuyerSignature("signed");
     setBuyerSigned(true);
-    setBuyerSignDate(new Date().toLocaleDateString("en-US", {
-      month: "long", day: "numeric", year: "numeric"
-    }));
+    setBuyerSignDate(
+      new Date().toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      }),
+    );
   };
 
   const handlePublisherSign = () => {
@@ -7697,9 +7747,13 @@ const ContractView = ({
     setPublisherSignatureData(dataUrl);
     setPublisherSignature("signed");
     setPublisherSigned(true);
-    setPublisherSignDate(new Date().toLocaleDateString("en-US", {
-      month: "long", day: "numeric", year: "numeric"
-    }));
+    setPublisherSignDate(
+      new Date().toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      }),
+    );
   };
 
   const handleClearBuyer = () => {
@@ -7738,9 +7792,13 @@ const ContractView = ({
       },
     };
 
-    html2pdf().set(opt).from(tempDiv).save().then(() => {
-      document.body.removeChild(tempDiv);
-    });
+    html2pdf()
+      .set(opt)
+      .from(tempDiv)
+      .save()
+      .then(() => {
+        document.body.removeChild(tempDiv);
+      });
   };
 
   return (
@@ -7749,7 +7807,9 @@ const ContractView = ({
       <div className="flex-shrink-0 px-3 py-2 border-b border-slate-200 bg-white">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-bold text-slate-900">
-            {bothSigned ? "\u2713 Fully Executed Agreement" : "Agreement \u2014 Pending Signatures"}
+            {bothSigned
+              ? "\u2713 Fully Executed Agreement"
+              : "Agreement \u2014 Pending Signatures"}
           </h2>
 
           {/* Zoom Controls */}
@@ -7799,7 +7859,8 @@ const ContractView = ({
               onClick={bothSigned ? handleSignedPDF : onDownloadPDF}
               className="inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50"
             >
-              <FileText className="h-3 w-3" /> {bothSigned ? "Download Signed PDF" : "Download PDF"}
+              <FileText className="h-3 w-3" />{" "}
+              {bothSigned ? "Download Signed PDF" : "Download PDF"}
             </button>
             <button
               type="button"
@@ -7815,12 +7876,25 @@ const ContractView = ({
       {/* Share for Signing Banner */}
       {signingLink && (
         <div className="flex-shrink-0 mx-2 mt-1">
-          <div className="rounded-lg border px-4 py-2.5 flex items-center justify-between gap-3" style={{ borderColor: "#5BC894", backgroundColor: "#F0FAF5" }}>
+          <div
+            className="rounded-lg border px-4 py-2.5 flex items-center justify-between gap-3"
+            style={{ borderColor: "#5BC894", backgroundColor: "#F0FAF5" }}
+          >
             <div className="flex items-center gap-2">
-              <Send className="h-4 w-4 flex-shrink-0" style={{ color: "#143B5E" }} />
+              <Send
+                className="h-4 w-4 flex-shrink-0"
+                style={{ color: "#143B5E" }}
+              />
               <div>
-                <span className="text-xs font-bold" style={{ color: "#143B5E" }}>Share for E-Signature</span>
-                <p className="text-[10px] text-slate-500">Send this link to each party so they can sign electronically</p>
+                <span
+                  className="text-xs font-bold"
+                  style={{ color: "#143B5E" }}
+                >
+                  Share for E-Signature
+                </span>
+                <p className="text-[10px] text-slate-500">
+                  Send this link to each party so they can sign electronically
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -7839,7 +7913,9 @@ const ContractView = ({
                   setTimeout(() => setSigningLinkCopied(false), 3000);
                 }}
                 className="rounded-lg px-4 py-1.5 text-xs font-bold text-white whitespace-nowrap transition-all"
-                style={{ backgroundColor: signingLinkCopied ? "#2EAC6D" : "#143B5E" }}
+                style={{
+                  backgroundColor: signingLinkCopied ? "#2EAC6D" : "#143B5E",
+                }}
               >
                 {signingLinkCopied ? "âœ“ Copied!" : "Copy Link"}
               </button>
@@ -7873,7 +7949,10 @@ const ContractView = ({
 
       {/* Signature Section */}
       <div className="flex-shrink-0 mx-2 mt-2 mb-1">
-        <div className="rounded-lg border-2 bg-white shadow-lg p-4" style={{ borderColor: bothSigned ? "#2EAC6D" : "#5BC894" }}>
+        <div
+          className="rounded-lg border-2 bg-white shadow-lg p-4"
+          style={{ borderColor: bothSigned ? "#2EAC6D" : "#5BC894" }}
+        >
           {/* Status Banner */}
           <div
             className="rounded-lg px-4 py-2 mb-3 text-center text-sm font-bold"
@@ -7883,17 +7962,29 @@ const ContractView = ({
               border: `1px solid ${bothSigned ? "#bbf7d0" : "#5BC894"}`,
             }}
           >
-            {!buyerSigned && !publisherSigned && "Both parties must sign below to execute this agreement"}
-            {buyerSigned && !publisherSigned && "\u2713 Buyer has signed \u2014 Awaiting Publisher signature"}
-            {!buyerSigned && publisherSigned && "\u2713 Publisher has signed \u2014 Awaiting Buyer signature"}
-            {bothSigned && "\u2705 Agreement fully executed by both parties \u2014 Ready for download"}
+            {!buyerSigned &&
+              !publisherSigned &&
+              "Both parties must sign below to execute this agreement"}
+            {buyerSigned &&
+              !publisherSigned &&
+              "\u2713 Buyer has signed \u2014 Awaiting Publisher signature"}
+            {!buyerSigned &&
+              publisherSigned &&
+              "\u2713 Publisher has signed \u2014 Awaiting Buyer signature"}
+            {bothSigned &&
+              "\u2705 Agreement fully executed by both parties \u2014 Ready for download"}
           </div>
 
           <div className="grid grid-cols-2 gap-6">
             {/* BUYER SIGNATURE */}
-            <div className={`rounded-lg border-2 p-3 ${buyerSigned ? "border-green-400 bg-green-50" : "border-slate-200 bg-slate-50"}`}>
+            <div
+              className={`rounded-lg border-2 p-3 ${buyerSigned ? "border-green-400 bg-green-50" : "border-slate-200 bg-slate-50"}`}
+            >
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-bold" style={{ color: "#143B5E" }}>
+                <span
+                  className="text-sm font-bold"
+                  style={{ color: "#143B5E" }}
+                >
                   Buyer / Agency Signature
                 </span>
                 {buyerSigned && (
@@ -7907,11 +7998,16 @@ const ContractView = ({
                 <div className="space-y-2">
                   <div className="h-20 rounded border border-green-300 bg-white flex items-center justify-center">
                     {buyerSignatureData && (
-                      <img src={buyerSignatureData} alt="Buyer Signature" style={{ maxHeight: "70px", maxWidth: "90%" }} />
+                      <img
+                        src={buyerSignatureData}
+                        alt="Buyer Signature"
+                        style={{ maxHeight: "70px", maxWidth: "90%" }}
+                      />
                     )}
                   </div>
                   <div className="text-xs text-slate-600">
-                    <strong>Printed Name:</strong> {buyerPrintedName || "\u2014"}
+                    <strong>Printed Name:</strong>{" "}
+                    {buyerPrintedName || "\u2014"}
                   </div>
                   <div className="text-xs text-slate-600">
                     <strong>Date Signed:</strong> {buyerSignDate}
@@ -7919,13 +8015,20 @@ const ContractView = ({
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <div className="rounded border-2 border-dashed border-slate-300 bg-white" style={{ height: "80px" }}>
+                  <div
+                    className="rounded border-2 border-dashed border-slate-300 bg-white"
+                    style={{ height: "80px" }}
+                  >
                     <SignatureCanvas
                       ref={buyerPadRef}
                       penColor="#000000"
                       canvasProps={{
                         className: "w-full h-full",
-                        style: { width: "100%", height: "80px", borderRadius: "4px" },
+                        style: {
+                          width: "100%",
+                          height: "80px",
+                          borderRadius: "4px",
+                        },
                       }}
                     />
                   </div>
@@ -7955,16 +8058,22 @@ const ContractView = ({
                     </button>
                   </div>
                   <p className="text-[10px] text-slate-400">
-                    Draw your signature above, type your legal name, then click Submit.
+                    Draw your signature above, type your legal name, then click
+                    Submit.
                   </p>
                 </div>
               )}
             </div>
 
             {/* PUBLISHER SIGNATURE */}
-            <div className={`rounded-lg border-2 p-3 ${publisherSigned ? "border-green-400 bg-green-50" : "border-slate-200 bg-slate-50"}`}>
+            <div
+              className={`rounded-lg border-2 p-3 ${publisherSigned ? "border-green-400 bg-green-50" : "border-slate-200 bg-slate-50"}`}
+            >
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-bold" style={{ color: "#143B5E" }}>
+                <span
+                  className="text-sm font-bold"
+                  style={{ color: "#143B5E" }}
+                >
                   Publisher / Recruiter Signature
                 </span>
                 {publisherSigned && (
@@ -7978,11 +8087,16 @@ const ContractView = ({
                 <div className="space-y-2">
                   <div className="h-20 rounded border border-green-300 bg-white flex items-center justify-center">
                     {publisherSignatureData && (
-                      <img src={publisherSignatureData} alt="Publisher Signature" style={{ maxHeight: "70px", maxWidth: "90%" }} />
+                      <img
+                        src={publisherSignatureData}
+                        alt="Publisher Signature"
+                        style={{ maxHeight: "70px", maxWidth: "90%" }}
+                      />
                     )}
                   </div>
                   <div className="text-xs text-slate-600">
-                    <strong>Printed Name:</strong> {publisherPrintedName || "\u2014"}
+                    <strong>Printed Name:</strong>{" "}
+                    {publisherPrintedName || "\u2014"}
                   </div>
                   <div className="text-xs text-slate-600">
                     <strong>Date Signed:</strong> {publisherSignDate}
@@ -7990,13 +8104,20 @@ const ContractView = ({
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <div className="rounded border-2 border-dashed border-slate-300 bg-white" style={{ height: "80px" }}>
+                  <div
+                    className="rounded border-2 border-dashed border-slate-300 bg-white"
+                    style={{ height: "80px" }}
+                  >
                     <SignatureCanvas
                       ref={publisherPadRef}
                       penColor="#000000"
                       canvasProps={{
                         className: "w-full h-full",
-                        style: { width: "100%", height: "80px", borderRadius: "4px" },
+                        style: {
+                          width: "100%",
+                          height: "80px",
+                          borderRadius: "4px",
+                        },
                       }}
                     />
                   </div>
@@ -8026,7 +8147,8 @@ const ContractView = ({
                     </button>
                   </div>
                   <p className="text-[10px] text-slate-400">
-                    Draw your signature above, type your legal name, then click Submit.
+                    Draw your signature above, type your legal name, then click
+                    Submit.
                   </p>
                 </div>
               )}
@@ -8120,7 +8242,9 @@ const ContractSigningPage = ({ contractId, db }) => {
     const loadContract = async () => {
       try {
         setLoading(true);
-        const docSnap = await getDoc(doc(db, "users", userId, "insertionOrders", docId));
+        const docSnap = await getDoc(
+          doc(db, "users", userId, "insertionOrders", docId),
+        );
         if (!docSnap.exists()) {
           setError("Contract not found. The link may be invalid or expired.");
           return;
@@ -8149,9 +8273,15 @@ const ContractSigningPage = ({ contractId, db }) => {
     if (!contractData) return;
     if (!contractData.buyerSignature && !contractData.publisherSignature) {
       setSigningAs("buyer");
-    } else if (contractData.buyerSignature && !contractData.publisherSignature) {
+    } else if (
+      contractData.buyerSignature &&
+      !contractData.publisherSignature
+    ) {
       setSigningAs("publisher");
-    } else if (!contractData.buyerSignature && contractData.publisherSignature) {
+    } else if (
+      !contractData.buyerSignature &&
+      contractData.publisherSignature
+    ) {
       setSigningAs("buyer");
     } else {
       setSigningAs(null); // fully signed
@@ -8167,17 +8297,23 @@ const ContractSigningPage = ({ contractId, db }) => {
     if (contractData.buyerSignature?.data) {
       html = html.replace(
         /(<div style="border: 1px solid #000; height: 50px;[^"]*display: flex; align-items: center; justify-content: center;">\s*)(<div style="height: 40px;"><\/div>\s*)(<\/div>\s*<div style="font-size: 14px; font-weight: bold;">Buyer Signature)/s,
-        `$1<img src="${contractData.buyerSignature.data}" style="max-height: 45px; max-width: 95%;" />$3`
+        `$1<img src="${contractData.buyerSignature.data}" style="max-height: 45px; max-width: 95%;" />$3`,
       );
       // Replace first date placeholder
       if (contractData.buyerSignature.signedAt) {
         const buyerDate = contractData.buyerSignature.signedAt?.toDate
-          ? contractData.buyerSignature.signedAt.toDate().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
-          : new Date(contractData.buyerSignature.signedAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
-        html = html.replace(
-          "Date: _______________",
-          `Date: ${buyerDate}`
-        );
+          ? contractData.buyerSignature.signedAt
+              .toDate()
+              .toLocaleDateString("en-US", {
+                month: "long",
+                day: "numeric",
+                year: "numeric",
+              })
+          : new Date(contractData.buyerSignature.signedAt).toLocaleDateString(
+              "en-US",
+              { month: "long", day: "numeric", year: "numeric" },
+            );
+        html = html.replace("Date: _______________", `Date: ${buyerDate}`);
       }
     }
 
@@ -8185,16 +8321,25 @@ const ContractSigningPage = ({ contractId, db }) => {
     if (contractData.publisherSignature?.data) {
       html = html.replace(
         /(<div style="border: 1px solid #000; height: 50px;[^"]*display: flex; align-items: center; justify-content: center;">\s*)(<div style="height: 40px;"><\/div>\s*)(<\/div>\s*<div style="font-size: 14px; font-weight: bold;">Publisher Signature)/s,
-        `$1<img src="${contractData.publisherSignature.data}" style="max-height: 45px; max-width: 95%;" />$3`
+        `$1<img src="${contractData.publisherSignature.data}" style="max-height: 45px; max-width: 95%;" />$3`,
       );
       if (contractData.publisherSignature.signedAt) {
         const pubDate = contractData.publisherSignature.signedAt?.toDate
-          ? contractData.publisherSignature.signedAt.toDate().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
-          : new Date(contractData.publisherSignature.signedAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
-        html = html.replace(
-          "Date: _______________",
-          `Date: ${pubDate}`
-        );
+          ? contractData.publisherSignature.signedAt
+              .toDate()
+              .toLocaleDateString("en-US", {
+                month: "long",
+                day: "numeric",
+                year: "numeric",
+              })
+          : new Date(
+              contractData.publisherSignature.signedAt,
+            ).toLocaleDateString("en-US", {
+              month: "long",
+              day: "numeric",
+              year: "numeric",
+            });
+        html = html.replace("Date: _______________", `Date: ${pubDate}`);
       }
     }
 
@@ -8230,7 +8375,9 @@ const ContractSigningPage = ({ contractId, db }) => {
 
       let newStatus;
       if (signingAs === "buyer") {
-        newStatus = publisherAlreadySigned ? "fully_signed" : "awaiting_publisher";
+        newStatus = publisherAlreadySigned
+          ? "fully_signed"
+          : "awaiting_publisher";
       } else {
         newStatus = buyerAlreadySigned ? "fully_signed" : "awaiting_buyer";
       }
@@ -8242,7 +8389,7 @@ const ContractSigningPage = ({ contractId, db }) => {
       });
 
       // Update local state
-      setContractData(prev => ({
+      setContractData((prev) => ({
         ...prev,
         [`${signingAs}Signature`]: { ...sigObj, signedAt },
         status: newStatus,
@@ -8285,16 +8432,21 @@ const ContractSigningPage = ({ contractId, db }) => {
       jsPDF: { unit: "in", format: "letter", orientation: "portrait" },
     };
 
-    html2pdf().set(opt).from(tempDiv).save().then(() => {
-      document.body.removeChild(tempDiv);
-    });
+    html2pdf()
+      .set(opt)
+      .from(tempDiv)
+      .save()
+      .then(() => {
+        document.body.removeChild(tempDiv);
+      });
   };
 
   const handleGoHome = () => {
     window.location.href = window.location.origin + window.location.pathname;
   };
 
-  const isFullySigned = contractData?.status === "fully_signed" ||
+  const isFullySigned =
+    contractData?.status === "fully_signed" ||
     (contractData?.buyerSignature && contractData?.publisherSignature);
 
   const buyerLabel = contractData?.partyLabels?.buyer || "Buyer";
@@ -8303,14 +8455,25 @@ const ContractSigningPage = ({ contractId, db }) => {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "linear-gradient(135deg, #0f172a 0%, #143B5E 50%, #0f172a 100%)" }}>
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{
+          background:
+            "linear-gradient(135deg, #0f172a 0%, #143B5E 50%, #0f172a 100%)",
+        }}
+      >
         <div className="text-center space-y-4">
-          <div className="relative mx-auto" style={{ width: "80px", height: "80px" }}>
+          <div
+            className="relative mx-auto"
+            style={{ width: "80px", height: "80px" }}
+          >
             <div className="absolute inset-0 rounded-full border-4 border-slate-700" />
             <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-emerald-400 animate-spin" />
           </div>
           <h2 className="text-xl font-bold text-white">Loading Agreement</h2>
-          <p className="text-sm text-slate-400">Retrieving contract for signing...</p>
+          <p className="text-sm text-slate-400">
+            Retrieving contract for signing...
+          </p>
         </div>
       </div>
     );
@@ -8319,12 +8482,20 @@ const ContractSigningPage = ({ contractId, db }) => {
   // Error state
   if (error && !contractData) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "linear-gradient(135deg, #0f172a 0%, #143B5E 50%, #0f172a 100%)" }}>
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{
+          background:
+            "linear-gradient(135deg, #0f172a 0%, #143B5E 50%, #0f172a 100%)",
+        }}
+      >
         <div className="bg-white rounded-2xl p-8 shadow-2xl max-w-md text-center space-y-4">
           <div className="h-16 w-16 mx-auto rounded-full bg-rose-100 flex items-center justify-center">
             <ShieldCheck className="h-8 w-8 text-rose-500" />
           </div>
-          <h2 className="text-xl font-bold text-slate-900">Unable to Load Agreement</h2>
+          <h2 className="text-xl font-bold text-slate-900">
+            Unable to Load Agreement
+          </h2>
           <p className="text-sm text-slate-600">{error}</p>
           <button
             onClick={handleGoHome}
@@ -8339,15 +8510,29 @@ const ContractSigningPage = ({ contractId, db }) => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)" }}>
+    <div
+      className="min-h-screen flex flex-col"
+      style={{
+        background: "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)",
+      }}
+    >
       {/* Top Header Bar */}
-      <header className="flex-shrink-0 border-b shadow-sm" style={{ backgroundColor: "#143B5E" }}>
+      <header
+        className="flex-shrink-0 border-b shadow-sm"
+        style={{ backgroundColor: "#143B5E" }}
+      >
         <div className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src="/pvnvoice.png" alt="PVNVoice" style={{ height: "28px" }} />
+            <img
+              src="/pvnvoice.png"
+              alt="PVNVoice"
+              style={{ height: "28px" }}
+            />
             <div>
               <h1 className="text-base font-bold text-white">PVNVoice Legal</h1>
-              <p className="text-xs text-slate-300">Secure Electronic Signature</p>
+              <p className="text-xs text-slate-300">
+                Secure Electronic Signature
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -8360,13 +8545,24 @@ const ContractSigningPage = ({ contractId, db }) => {
               }}
             >
               {isFullySigned ? (
-                <><CheckCircle2 className="h-3.5 w-3.5" /> Fully Executed</>
+                <>
+                  <CheckCircle2 className="h-3.5 w-3.5" /> Fully Executed
+                </>
               ) : contractData?.buyerSignature ? (
-                <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Awaiting {publisherLabel}</>
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Awaiting{" "}
+                  {publisherLabel}
+                </>
               ) : contractData?.publisherSignature ? (
-                <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Awaiting {buyerLabel}</>
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Awaiting{" "}
+                  {buyerLabel}
+                </>
               ) : (
-                <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Awaiting Signatures</>
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Awaiting
+                  Signatures
+                </>
               )}
             </span>
             <button
@@ -8384,7 +8580,9 @@ const ContractSigningPage = ({ contractId, db }) => {
         {/* Contract Preview */}
         <div className="flex-1 flex flex-col min-h-0">
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-sm font-bold text-slate-700">Agreement Preview</h2>
+            <h2 className="text-sm font-bold text-slate-700">
+              Agreement Preview
+            </h2>
             <div className="flex items-center gap-2">
               <span className="text-xs text-slate-500">Zoom:</span>
               <select
@@ -8421,65 +8619,116 @@ const ContractSigningPage = ({ contractId, db }) => {
         {/* Signature Panel */}
         <div className="w-full lg:w-96 flex-shrink-0 space-y-4">
           {/* Signing Progress */}
-          <div className="rounded-xl border-2 bg-white p-5 shadow-lg" style={{ borderColor: isFullySigned ? "#2EAC6D" : "#5BC894" }}>
+          <div
+            className="rounded-xl border-2 bg-white p-5 shadow-lg"
+            style={{ borderColor: isFullySigned ? "#2EAC6D" : "#5BC894" }}
+          >
             <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
               <ShieldCheck className="h-4 w-4" style={{ color: "#2EAC6D" }} />
               Signature Status
             </h3>
 
             {/* Buyer Status */}
-            <div className={`rounded-lg p-3 mb-2 border ${contractData?.buyerSignature ? "border-green-300 bg-green-50" : "border-slate-200 bg-slate-50"}`}>
+            <div
+              className={`rounded-lg p-3 mb-2 border ${contractData?.buyerSignature ? "border-green-300 bg-green-50" : "border-slate-200 bg-slate-50"}`}
+            >
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-700">{buyerLabel}</span>
+                <span className="text-xs font-bold text-slate-700">
+                  {buyerLabel}
+                </span>
                 {contractData?.buyerSignature ? (
                   <span className="inline-flex items-center gap-1 text-xs font-bold text-green-700">
                     <CheckCircle2 className="h-3 w-3" /> Signed
                   </span>
                 ) : (
-                  <span className="text-xs text-amber-600 font-medium">Pending</span>
+                  <span className="text-xs text-amber-600 font-medium">
+                    Pending
+                  </span>
                 )}
               </div>
               {contractData?.buyerSignature && (
                 <div className="mt-2 space-y-1">
                   <div className="h-12 rounded border border-green-200 bg-white flex items-center justify-center">
-                    <img src={contractData.buyerSignature.data} alt="Buyer Signature" style={{ maxHeight: "40px", maxWidth: "90%" }} />
+                    <img
+                      src={contractData.buyerSignature.data}
+                      alt="Buyer Signature"
+                      style={{ maxHeight: "40px", maxWidth: "90%" }}
+                    />
                   </div>
-                  <p className="text-[10px] text-slate-500"><strong>Name:</strong> {contractData.buyerSignature.signerName}</p>
                   <p className="text-[10px] text-slate-500">
-                    <strong>Date:</strong> {
-                      contractData.buyerSignature.signedAt?.toDate
-                        ? contractData.buyerSignature.signedAt.toDate().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
-                        : new Date(contractData.buyerSignature.signedAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
-                    }
+                    <strong>Name:</strong>{" "}
+                    {contractData.buyerSignature.signerName}
+                  </p>
+                  <p className="text-[10px] text-slate-500">
+                    <strong>Date:</strong>{" "}
+                    {contractData.buyerSignature.signedAt?.toDate
+                      ? contractData.buyerSignature.signedAt
+                          .toDate()
+                          .toLocaleDateString("en-US", {
+                            month: "long",
+                            day: "numeric",
+                            year: "numeric",
+                          })
+                      : new Date(
+                          contractData.buyerSignature.signedAt,
+                        ).toLocaleDateString("en-US", {
+                          month: "long",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
                   </p>
                 </div>
               )}
             </div>
 
             {/* Publisher Status */}
-            <div className={`rounded-lg p-3 border ${contractData?.publisherSignature ? "border-green-300 bg-green-50" : "border-slate-200 bg-slate-50"}`}>
+            <div
+              className={`rounded-lg p-3 border ${contractData?.publisherSignature ? "border-green-300 bg-green-50" : "border-slate-200 bg-slate-50"}`}
+            >
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-700">{publisherLabel}</span>
+                <span className="text-xs font-bold text-slate-700">
+                  {publisherLabel}
+                </span>
                 {contractData?.publisherSignature ? (
                   <span className="inline-flex items-center gap-1 text-xs font-bold text-green-700">
                     <CheckCircle2 className="h-3 w-3" /> Signed
                   </span>
                 ) : (
-                  <span className="text-xs text-amber-600 font-medium">Pending</span>
+                  <span className="text-xs text-amber-600 font-medium">
+                    Pending
+                  </span>
                 )}
               </div>
               {contractData?.publisherSignature && (
                 <div className="mt-2 space-y-1">
                   <div className="h-12 rounded border border-green-200 bg-white flex items-center justify-center">
-                    <img src={contractData.publisherSignature.data} alt="Publisher Signature" style={{ maxHeight: "40px", maxWidth: "90%" }} />
+                    <img
+                      src={contractData.publisherSignature.data}
+                      alt="Publisher Signature"
+                      style={{ maxHeight: "40px", maxWidth: "90%" }}
+                    />
                   </div>
-                  <p className="text-[10px] text-slate-500"><strong>Name:</strong> {contractData.publisherSignature.signerName}</p>
                   <p className="text-[10px] text-slate-500">
-                    <strong>Date:</strong> {
-                      contractData.publisherSignature.signedAt?.toDate
-                        ? contractData.publisherSignature.signedAt.toDate().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
-                        : new Date(contractData.publisherSignature.signedAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
-                    }
+                    <strong>Name:</strong>{" "}
+                    {contractData.publisherSignature.signerName}
+                  </p>
+                  <p className="text-[10px] text-slate-500">
+                    <strong>Date:</strong>{" "}
+                    {contractData.publisherSignature.signedAt?.toDate
+                      ? contractData.publisherSignature.signedAt
+                          .toDate()
+                          .toLocaleDateString("en-US", {
+                            month: "long",
+                            day: "numeric",
+                            year: "numeric",
+                          })
+                      : new Date(
+                          contractData.publisherSignature.signedAt,
+                        ).toLocaleDateString("en-US", {
+                          month: "long",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
                   </p>
                 </div>
               )}
@@ -8494,7 +8743,8 @@ const ContractSigningPage = ({ contractId, db }) => {
                 Sign as {signingAs === "buyer" ? buyerLabel : publisherLabel}
               </h3>
               <p className="text-[10px] text-slate-500 mb-3">
-                Draw your signature below, type your legal name, and click Submit to execute.
+                Draw your signature below, type your legal name, and click
+                Submit to execute.
               </p>
 
               {error && (
@@ -8504,13 +8754,21 @@ const ContractSigningPage = ({ contractId, db }) => {
               )}
 
               {/* Signature Canvas */}
-              <div className="rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 mb-3" style={{ height: "120px" }}>
+              <div
+                className="rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 mb-3"
+                style={{ height: "120px" }}
+              >
                 <SignatureCanvas
                   ref={sigPadRef}
                   penColor="#000000"
                   canvasProps={{
                     className: "w-full h-full",
-                    style: { width: "100%", height: "120px", borderRadius: "8px", background: "#fff" },
+                    style: {
+                      width: "100%",
+                      height: "120px",
+                      borderRadius: "8px",
+                      background: "#fff",
+                    },
                   }}
                 />
               </div>
@@ -8534,9 +8792,15 @@ const ContractSigningPage = ({ contractId, db }) => {
                   style={{ backgroundColor: "#2EAC6D" }}
                 >
                   {signing ? (
-                    <><Loader2 className="h-4 w-4 inline animate-spin mr-1" /> Signing...</>
+                    <>
+                      <Loader2 className="h-4 w-4 inline animate-spin mr-1" />{" "}
+                      Signing...
+                    </>
                   ) : (
-                    <><PenSquare className="h-4 w-4 inline mr-1" /> Submit Signature</>
+                    <>
+                      <PenSquare className="h-4 w-4 inline mr-1" /> Submit
+                      Signature
+                    </>
                   )}
                 </button>
                 <button
@@ -8556,7 +8820,9 @@ const ContractSigningPage = ({ contractId, db }) => {
               <div className="h-12 w-12 mx-auto rounded-full bg-green-100 flex items-center justify-center">
                 <CheckCircle2 className="h-6 w-6 text-green-600" />
               </div>
-              <h3 className="text-sm font-bold text-green-800">Signature Submitted!</h3>
+              <h3 className="text-sm font-bold text-green-800">
+                Signature Submitted!
+              </h3>
               <p className="text-xs text-green-700">
                 Share this link with the other party to complete the signing:
               </p>
@@ -8579,28 +8845,30 @@ const ContractSigningPage = ({ contractId, db }) => {
           )}
 
           {/* Share Link â€” shown right after initial load when buyer has signed */}
-          {!signed && contractData?.buyerSignature && !contractData?.publisherSignature && (
-            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow">
-              <h4 className="text-xs font-bold text-slate-700 mb-2 flex items-center gap-1">
-                <Send className="h-3 w-3" /> Share Signing Link
-              </h4>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  readOnly
-                  value={`${window.location.origin}${window.location.pathname}?sign=${contractId}`}
-                  className="flex-1 rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-600"
-                />
-                <button
-                  onClick={handleCopyLink}
-                  className="rounded-lg px-3 py-2 text-xs font-bold text-white transition"
-                  style={{ backgroundColor: "#143B5E" }}
-                >
-                  {linkCopied ? "âœ“ Copied!" : "Copy Link"}
-                </button>
+          {!signed &&
+            contractData?.buyerSignature &&
+            !contractData?.publisherSignature && (
+              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow">
+                <h4 className="text-xs font-bold text-slate-700 mb-2 flex items-center gap-1">
+                  <Send className="h-3 w-3" /> Share Signing Link
+                </h4>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={`${window.location.origin}${window.location.pathname}?sign=${contractId}`}
+                    className="flex-1 rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-600"
+                  />
+                  <button
+                    onClick={handleCopyLink}
+                    className="rounded-lg px-3 py-2 text-xs font-bold text-white transition"
+                    style={{ backgroundColor: "#143B5E" }}
+                  >
+                    {linkCopied ? "âœ“ Copied!" : "Copy Link"}
+                  </button>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
           {/* Download Section */}
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow space-y-2">
@@ -8613,7 +8881,9 @@ const ContractSigningPage = ({ contractId, db }) => {
               style={{ backgroundColor: isFullySigned ? "#2EAC6D" : "#143B5E" }}
             >
               <FileText className="h-4 w-4 inline mr-1" />
-              {isFullySigned ? "Download Fully Signed PDF" : "Download Current PDF"}
+              {isFullySigned
+                ? "Download Fully Signed PDF"
+                : "Download Current PDF"}
             </button>
             <p className="text-[10px] text-slate-400 text-center">
               {isFullySigned
@@ -8640,4 +8910,3 @@ const ContractSigningPage = ({ contractId, db }) => {
 };
 
 export default InsertionOrderGenerator;
-
