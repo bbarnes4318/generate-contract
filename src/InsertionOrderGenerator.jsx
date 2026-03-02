@@ -7770,17 +7770,8 @@ const ContractView = ({
 
   // PDF download that includes signatures
   const handleSignedPDF = () => {
-    const tempDiv = document.createElement("div");
-    tempDiv.innerHTML = contractWithSignatures;
-    tempDiv.style.position = "fixed";
-    tempDiv.style.left = "0";
-    tempDiv.style.top = "0";
-    tempDiv.style.width = "8.5in";
-    tempDiv.style.zIndex = "-9999";
-    tempDiv.style.opacity = "0";
-    tempDiv.style.overflow = "visible";
-    tempDiv.style.background = "#fff";
-    document.body.appendChild(tempDiv);
+    const contractElement = document.querySelector(".contract-body");
+    if (!contractElement) return;
 
     const opt = {
       margin: [0.3, 0.3, 0.3, 0.3],
@@ -7791,8 +7782,7 @@ const ContractView = ({
         useCORS: true,
         letterRendering: true,
         scrollX: 0,
-        scrollY: 0,
-        windowWidth: 816,
+        scrollY: -window.scrollY,
       },
       jsPDF: {
         unit: "in",
@@ -7801,16 +7791,7 @@ const ContractView = ({
       },
     };
 
-    html2pdf()
-      .set(opt)
-      .from(tempDiv)
-      .save()
-      .then(() => {
-        document.body.removeChild(tempDiv);
-      })
-      .catch(() => {
-        if (document.body.contains(tempDiv)) document.body.removeChild(tempDiv);
-      });
+    html2pdf().set(opt).from(contractElement).save();
   };
 
   return (
@@ -8428,17 +8409,8 @@ const ContractSigningPage = ({ contractId, db }) => {
   };
 
   const handleDownloadPDF = () => {
-    const tempDiv = document.createElement("div");
-    tempDiv.innerHTML = contractHtmlWithSigs;
-    tempDiv.style.position = "fixed";
-    tempDiv.style.left = "0";
-    tempDiv.style.top = "0";
-    tempDiv.style.width = "8.5in";
-    tempDiv.style.zIndex = "-9999";
-    tempDiv.style.opacity = "0";
-    tempDiv.style.overflow = "visible";
-    tempDiv.style.background = "#fff";
-    document.body.appendChild(tempDiv);
+    const contractElement = document.querySelector(".contract-body");
+    if (!contractElement) return;
 
     const opt = {
       margin: [0.3, 0.3, 0.3, 0.3],
@@ -8449,22 +8421,12 @@ const ContractSigningPage = ({ contractId, db }) => {
         useCORS: true,
         letterRendering: true,
         scrollX: 0,
-        scrollY: 0,
-        windowWidth: 816,
+        scrollY: -window.scrollY,
       },
       jsPDF: { unit: "in", format: "letter", orientation: "portrait" },
     };
 
-    html2pdf()
-      .set(opt)
-      .from(tempDiv)
-      .save()
-      .then(() => {
-        document.body.removeChild(tempDiv);
-      })
-      .catch(() => {
-        if (document.body.contains(tempDiv)) document.body.removeChild(tempDiv);
-      });
+    html2pdf().set(opt).from(contractElement).save();
   };
 
   const handleGoHome = () => {
