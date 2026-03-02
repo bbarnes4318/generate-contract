@@ -7773,6 +7773,28 @@ const ContractView = ({
     const contractElement = document.querySelector(".contract-body");
     if (!contractElement) return;
 
+    // Save original styles
+    const origHeight = contractElement.style.height;
+    const origMaxHeight = contractElement.style.maxHeight;
+    const origOverflow = contractElement.style.overflow;
+    const origOverflowY = contractElement.style.overflowY;
+
+    // Expand to full content height for capture
+    contractElement.style.height = "auto";
+    contractElement.style.maxHeight = "none";
+    contractElement.style.overflow = "visible";
+    contractElement.style.overflowY = "visible";
+
+    // Also reset any zoom transform on the inner div
+    const innerDiv = contractElement.querySelector(".prose");
+    let origTransform, origWidth;
+    if (innerDiv) {
+      origTransform = innerDiv.style.transform;
+      origWidth = innerDiv.style.width;
+      innerDiv.style.transform = "scale(1)";
+      innerDiv.style.width = "100%";
+    }
+
     const opt = {
       margin: [0.3, 0.3, 0.3, 0.3],
       filename: `signed-insertion-order-${Date.now()}.pdf`,
@@ -7782,7 +7804,7 @@ const ContractView = ({
         useCORS: true,
         letterRendering: true,
         scrollX: 0,
-        scrollY: -window.scrollY,
+        scrollY: 0,
       },
       jsPDF: {
         unit: "in",
@@ -7791,7 +7813,21 @@ const ContractView = ({
       },
     };
 
-    html2pdf().set(opt).from(contractElement).save();
+    html2pdf()
+      .set(opt)
+      .from(contractElement)
+      .save()
+      .then(() => {
+        // Restore original styles
+        contractElement.style.height = origHeight;
+        contractElement.style.maxHeight = origMaxHeight;
+        contractElement.style.overflow = origOverflow;
+        contractElement.style.overflowY = origOverflowY;
+        if (innerDiv) {
+          innerDiv.style.transform = origTransform;
+          innerDiv.style.width = origWidth;
+        }
+      });
   };
 
   return (
@@ -8412,6 +8448,28 @@ const ContractSigningPage = ({ contractId, db }) => {
     const contractElement = document.querySelector(".contract-body");
     if (!contractElement) return;
 
+    // Save original styles
+    const origHeight = contractElement.style.height;
+    const origMaxHeight = contractElement.style.maxHeight;
+    const origOverflow = contractElement.style.overflow;
+    const origOverflowY = contractElement.style.overflowY;
+
+    // Expand to full content height for capture
+    contractElement.style.height = "auto";
+    contractElement.style.maxHeight = "none";
+    contractElement.style.overflow = "visible";
+    contractElement.style.overflowY = "visible";
+
+    // Also reset any zoom transform on the inner div
+    const innerDiv = contractElement.querySelector(".prose");
+    let origTransform, origWidth;
+    if (innerDiv) {
+      origTransform = innerDiv.style.transform;
+      origWidth = innerDiv.style.width;
+      innerDiv.style.transform = "scale(1)";
+      innerDiv.style.width = "100%";
+    }
+
     const opt = {
       margin: [0.3, 0.3, 0.3, 0.3],
       filename: `signed-agreement-${contractId.slice(0, 8)}-${Date.now()}.pdf`,
@@ -8421,12 +8479,26 @@ const ContractSigningPage = ({ contractId, db }) => {
         useCORS: true,
         letterRendering: true,
         scrollX: 0,
-        scrollY: -window.scrollY,
+        scrollY: 0,
       },
       jsPDF: { unit: "in", format: "letter", orientation: "portrait" },
     };
 
-    html2pdf().set(opt).from(contractElement).save();
+    html2pdf()
+      .set(opt)
+      .from(contractElement)
+      .save()
+      .then(() => {
+        // Restore original styles
+        contractElement.style.height = origHeight;
+        contractElement.style.maxHeight = origMaxHeight;
+        contractElement.style.overflow = origOverflow;
+        contractElement.style.overflowY = origOverflowY;
+        if (innerDiv) {
+          innerDiv.style.transform = origTransform;
+          innerDiv.style.width = origWidth;
+        }
+      });
   };
 
   const handleGoHome = () => {
