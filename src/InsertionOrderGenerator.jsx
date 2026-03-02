@@ -8301,7 +8301,8 @@ const ContractSigningPage = ({ contractId, db }) => {
   useEffect(() => {
     if (!contractData) return;
     if (!contractData.buyerSignature && !contractData.publisherSignature) {
-      setSigningAs("buyer");
+      // Neither has signed — let user choose
+      setSigningAs(null);
     } else if (
       contractData.buyerSignature &&
       !contractData.publisherSignature
@@ -8316,6 +8317,14 @@ const ContractSigningPage = ({ contractId, db }) => {
       setSigningAs(null); // fully signed
     }
   }, [contractData]);
+
+  // Whether user still needs to pick a party (neither signed yet and no choice made)
+  const needsPartyChoice =
+    contractData &&
+    !contractData.buyerSignature &&
+    !contractData.publisherSignature &&
+    !signingAs &&
+    !signed;
 
   // Build contract HTML with any existing signatures
   const contractHtmlWithSigs = useMemo(() => {
@@ -8796,6 +8805,56 @@ const ContractSigningPage = ({ contractId, db }) => {
           </div>
 
           {/* Signing Pad â€” only shown if there's still a party that needs to sign */}
+          {/* Party Selection — shown when neither party has signed yet */}
+          {needsPartyChoice && (
+            <div className="rounded-xl border-2 border-blue-300 bg-white p-5 shadow-lg">
+              <h3 className="text-sm font-bold text-slate-900 mb-2 flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4" style={{ color: "#143B5E" }} />
+                Who are you signing as?
+              </h3>
+              <p className="text-[10px] text-slate-500 mb-4">
+                Select your role in this agreement to proceed with signing.
+              </p>
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => setSigningAs("buyer")}
+                  className="w-full rounded-lg border-2 border-slate-200 bg-white px-4 py-3 text-left hover:border-blue-400 hover:bg-blue-50 transition group"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-sm font-bold text-slate-900 group-hover:text-blue-700">
+                        {buyerLabel}
+                      </div>
+                      <div className="text-[10px] text-slate-500">
+                        Sign as the buying / receiving party
+                      </div>
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-slate-400 group-hover:text-blue-500" />
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSigningAs("publisher")}
+                  className="w-full rounded-lg border-2 border-slate-200 bg-white px-4 py-3 text-left hover:border-emerald-400 hover:bg-emerald-50 transition group"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-sm font-bold text-slate-900 group-hover:text-emerald-700">
+                        {publisherLabel}
+                      </div>
+                      <div className="text-[10px] text-slate-500">
+                        Sign as the publishing / providing party
+                      </div>
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-slate-400 group-hover:text-emerald-500" />
+                  </div>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Signing Pad - only shown after party is chosen */}
           {signingAs && !signed && (
             <div className="rounded-xl border-2 border-blue-300 bg-white p-5 shadow-lg">
               <h3 className="text-sm font-bold text-slate-900 mb-1 flex items-center gap-2">
