@@ -7772,10 +7772,14 @@ const ContractView = ({
   const handleSignedPDF = () => {
     const tempDiv = document.createElement("div");
     tempDiv.innerHTML = contractWithSignatures;
-    tempDiv.className = "contract-body";
-    tempDiv.style.position = "absolute";
-    tempDiv.style.left = "-9999px";
+    tempDiv.style.position = "fixed";
+    tempDiv.style.left = "0";
     tempDiv.style.top = "0";
+    tempDiv.style.width = "8.5in";
+    tempDiv.style.zIndex = "-9999";
+    tempDiv.style.opacity = "0";
+    tempDiv.style.overflow = "visible";
+    tempDiv.style.background = "#fff";
     document.body.appendChild(tempDiv);
 
     const opt = {
@@ -7786,6 +7790,9 @@ const ContractView = ({
         scale: 2,
         useCORS: true,
         letterRendering: true,
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: 816,
       },
       jsPDF: {
         unit: "in",
@@ -7800,6 +7807,9 @@ const ContractView = ({
       .save()
       .then(() => {
         document.body.removeChild(tempDiv);
+      })
+      .catch(() => {
+        if (document.body.contains(tempDiv)) document.body.removeChild(tempDiv);
       });
   };
 
@@ -8420,17 +8430,28 @@ const ContractSigningPage = ({ contractId, db }) => {
   const handleDownloadPDF = () => {
     const tempDiv = document.createElement("div");
     tempDiv.innerHTML = contractHtmlWithSigs;
-    tempDiv.className = "contract-body";
-    tempDiv.style.position = "absolute";
-    tempDiv.style.left = "-9999px";
+    tempDiv.style.position = "fixed";
+    tempDiv.style.left = "0";
     tempDiv.style.top = "0";
+    tempDiv.style.width = "8.5in";
+    tempDiv.style.zIndex = "-9999";
+    tempDiv.style.opacity = "0";
+    tempDiv.style.overflow = "visible";
+    tempDiv.style.background = "#fff";
     document.body.appendChild(tempDiv);
 
     const opt = {
       margin: [0.3, 0.3, 0.3, 0.3],
       filename: `signed-agreement-${contractId.slice(0, 8)}-${Date.now()}.pdf`,
       image: { type: "jpeg", quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+      html2canvas: {
+        scale: 2,
+        useCORS: true,
+        letterRendering: true,
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: 816,
+      },
       jsPDF: { unit: "in", format: "letter", orientation: "portrait" },
     };
 
@@ -8440,6 +8461,9 @@ const ContractSigningPage = ({ contractId, db }) => {
       .save()
       .then(() => {
         document.body.removeChild(tempDiv);
+      })
+      .catch(() => {
+        if (document.body.contains(tempDiv)) document.body.removeChild(tempDiv);
       });
   };
 
