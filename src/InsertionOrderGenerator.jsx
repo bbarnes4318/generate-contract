@@ -2163,7 +2163,7 @@ ${
 <h1>1. DEFINITIONS AND INTERPRETATION</h1>
 
 <p><span class="section-number">1.1</span> <strong>"Applicable Law"</strong> means all federal, state, provincial, and international statutes, regulations, and industry guidelines governing ${
-    formData?.type === "ACA Health"
+    formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
       ? "insurance sales, agent licensing, privacy, data protection, consumer protection, and advertising, including without limitation HIPAA, state insurance regulations, and federal ACA requirements"
       : "telemarketing, privacy, data protection, consumer protection, and advertising, including without limitation the Telephone Consumer Protection Act (TCPA), Telemarketing Sales Rule (TSR), CAN-SPAM Act, state Do Not Call statutes, HIPAA (to the extent applicable), and GDPR/UK GDPR"
   }.</p>
@@ -2171,7 +2171,7 @@ ${
 <p><span class="section-number">1.2</span> ${
     formData?.type === "Employment Contract"
       ? '<strong>"Employment"</strong> means the employment relationship established between Employer and Employee pursuant to this Agreement.'
-      : formData?.type === "ACA Health"
+      : formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
         ? '<strong>"Agent Recruitment Services"</strong> means the services provided by Recruiter to identify, recruit, hire, and support qualified insurance agents for the Agency.'
         : '<strong>"Campaign"</strong> means the pay-per-call program described in Exhibit A.'
   }</p>
@@ -2179,7 +2179,7 @@ ${
 <p><span class="section-number">1.3</span> ${
     formData?.type === "Employment Contract"
       ? '<strong>"Compensation"</strong> means the total remuneration package provided to Employee, including base salary, hourly wages, commissions, bonuses, and benefits as specified in this Agreement.'
-      : formData?.type === "ACA Health"
+      : formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
         ? '<strong>"NPN Override Agent"</strong> means an insurance agent who provides their National Producer Number (NPN) to the Agency for contracting purposes to sell ACA health insurance policies.'
         : formData?.type === "CPA"
           ? '<strong>"Qualified Sale"</strong> means a Sale that satisfies the targeting and compliance requirements in Exhibit A.'
@@ -2189,7 +2189,7 @@ ${
 <p><span class="section-number">1.4</span> ${
     formData?.type === "Employment Contract"
       ? '<strong>"Job Duties"</strong> means the specific responsibilities, tasks, and obligations of Employee as outlined in the job description and performance expectations.'
-      : formData?.type === "ACA Health"
+      : formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
         ? '<strong>"Direct Sales Agent"</strong> means an insurance agent recruited by Recruiter who will sell ACA health insurance policies directly to consumers.'
         : formData?.type === "CPA"
           ? '<strong>"Sale"</strong> means a conversion event as defined in Exhibit A.'
@@ -2199,7 +2199,7 @@ ${
 <p><span class="section-number">1.5</span> ${
     formData?.type === "Employment Contract"
       ? '<strong>"Confidential Information"</strong> means all proprietary, confidential, and trade secret information of Employer, including but not limited to customer lists, business strategies, financial data, and technical information.'
-      : formData?.type === "ACA Health"
+      : formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
         ? '<strong>"Active Policy"</strong> means an ACA health insurance policy that has been issued by the carrier and for which the customer is current on premium payments.'
         : formData?.type === "CPL"
           ? '<strong>"Billable Duration"</strong> means the minimum call length required for a Call to qualify for payment.'
@@ -2217,7 +2217,7 @@ ${
 <p><span class="section-number">1.6</span> ${
     formData?.type === "Employment Contract"
       ? '<strong>"Intellectual Property"</strong> means all inventions, discoveries, improvements, works of authorship, and other intellectual property created by Employee during the course of employment.'
-      : formData?.type === "ACA Health"
+      : formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
         ? '<strong>"Carrier"</strong> means the insurance company that issues and administers ACA health insurance policies.'
         : formData?.type === "CPL"
           ? '<strong>"Traffic Source"</strong> means the origin of calls, including but not limited to digital advertising, direct mail, or other marketing channels.'
@@ -2231,7 +2231,7 @@ ${
 <h1>2. ${
     formData?.type === "Employment Contract"
       ? "EMPLOYMENT TERMS"
-      : formData?.type === "ACA Health"
+      : formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
         ? "AGENT RECRUITMENT SERVICES"
         : "CAMPAIGN GOVERNANCE"
   }</h1>
@@ -2294,13 +2294,13 @@ ${
 }
 
 <p><span class="section-number">2.3</span> ${
-    formData?.type === "ACA Health"
+    formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
       ? "Both Parties shall maintain detailed records of all recruitment activities, agent performance, and policy sales for audit and compliance purposes."
       : "Both Parties shall maintain detailed call logs, consent documentation, and disposition data for audit and compliance purposes."
   }</p>
 
 <p><span class="section-number">2.4</span> ${
-    formData?.type === "ACA Health"
+    formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
       ? "Recruiter shall maintain detailed records of all agent recruitment activities, including candidate sourcing, interview processes, hiring decisions, and performance evaluations. These records shall be available for Agency review upon reasonable notice."
       : "Publisher shall maintain detailed records of all call generation activities, including traffic sources, conversion rates, and quality metrics. These records shall be available for Buyer review upon reasonable notice."
   }</p>
@@ -2428,25 +2428,25 @@ ${
 <h1>${formData?.type === "Employment Contract" ? "7" : "3"}. ${
     formData?.type === "Employment Contract"
       ? "GOVERNING LAW AND DISPUTE RESOLUTION"
-      : formData?.type === "ACA Health"
+      : formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
         ? "AGENT LICENSING AND COMPLIANCE"
         : "CONSENT, EVIDENCE, AND COMPLIANCE"
   }</h1>
 
 <p><span class="section-number">3.1</span> ${
-    formData?.type === "ACA Health"
+    formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
       ? "All recruited agents must be properly licensed to sell ACA health insurance in their respective states. Recruiter shall verify and maintain records of all agent licenses and ensure compliance with state insurance regulations."
       : "Publisher will capture, maintain, and furnish proof of consent for all Calls in accordance with Applicable Law, including Jornaya LeadID, TrustedForm Certificates, or equivalent."
   }</p>
 
 <p><span class="section-number">3.2</span> ${
-    formData?.type === "ACA Health"
+    formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
       ? "Recruiter shall ensure all recruited agents complete required training and certification programs for ACA health insurance sales. Agency shall provide ongoing compliance support and monitoring."
       : "Consent and call recordings will be retained for a minimum of five (5) years. Buyer shall notify Publisher within one (1) business day of any consumer revocation of consent."
   }</p>
 
 <p><span class="section-number">3.3</span> ${
-    formData?.type === "ACA Health"
+    formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
       ? "Each Party shall cooperate in good faith to investigate any compliance issues or regulatory inquiries within two (2) business days of notice and implement mutually agreed remediation steps."
       : "Each Party shall cooperate in good faith to investigate disputes or regulatory inquiries within two (2) business days of notice and implement mutually agreed remediation steps."
   }</p>
@@ -2454,13 +2454,13 @@ ${
 <div class="separator"></div>
 
 <h1>4. ${
-    formData?.type === "ACA Health"
+    formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
       ? "AGENT SUPPORT AND TRAINING"
       : "CALL HANDLING AND BUFFER PROTOCOLS"
   }</h1>
 
 <p><span class="section-number">4.1</span> ${
-    formData?.type === "ACA Health"
+    formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
       ? "Agency shall provide comprehensive training materials, sales scripts, and ongoing support for all recruited agents. Agency shall ensure adequate staffing to support agent needs during business hours."
       : formData?.type === "CPL"
         ? `Buyer shall ensure adequate staffing and technical capacity to accept Calls during designated hours. The Buffer Time of ${ensureValue(
@@ -2480,13 +2480,13 @@ ${
 }
 
 <p><span class="section-number">4.2</span> ${
-    formData?.type === "ACA Health"
+    formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
       ? "Recruiter shall provide ongoing support and training to recruited agents to ensure they meet performance standards and maintain compliance with all applicable regulations."
       : "Publisher may monitor live transfers, IVR flows, and call recordings to verify call quality and adherence to scripts. Buyer consents to such quality assurance measures to the extent permitted by Applicable Law."
   }</p>
 
 <p><span class="section-number">4.3</span> ${
-    formData?.type === "ACA Health"
+    formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
       ? "Agency shall implement quality assurance measures to monitor agent performance and ensure compliance with all applicable laws and regulations."
       : "Where overseas or remote call centers are utilized, the responsible Party shall implement enhanced linguistic, cultural, and compliance training to protect consumers and brand integrity."
   }</p>
@@ -2494,7 +2494,7 @@ ${
 <div class="separator"></div>
 
 <h1>5. ${
-    formData?.type === "ACA Health"
+    formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
       ? "PAYMENT TERMS AND STRUCTURE"
       : "COMMERCIAL TERMS AND PAYMENT"
   }</h1>
@@ -2518,13 +2518,15 @@ ${
   }</p>
 
 <p><span class="section-number">5.2</span> ${
-    formData?.type === "ACA Health"
+    formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
       ? `Billing Cycle: ${ensureValue(formData?.acaBillingCycle)}. Agreement Duration: ${ensureValue(formData?.acaDuration)} months from the Effective Date, automatically renewing for successive ${ensureValue(formData?.acaDuration)}-month periods unless either Party provides written notice of non-renewal at least thirty (30) days prior to the end of the then-current term.`
-      : `Billing Cycle: ${ensureValue(formData?.billingCycle)}`
+      : formData?.type === "ACA Health"
+        ? `Billing Cycle: ${ensureValue(formData?.acaBillingCycle)}`
+        : `Billing Cycle: ${ensureValue(formData?.billingCycle)}`
   }</p>
 
 <p><span class="section-number">5.2a</span> ${
-    formData?.type === "ACA Health"
+    formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
       ? "Payment Timing: All payments are contingent upon policies being issued and paid by the carrier. No payments will be made for policies that are not issued, cancelled, or fail to receive carrier payment."
       : ""
   }</p>
@@ -2555,19 +2557,19 @@ ${formData?.vertical === "Final Expense" && formData?.type === "CPA" ? `<p><span
 ${formData?.type === "ACA Health" && formData?.acaSubType !== "CPA" && formData?.acaSubType !== "CPL" ? `<p><span class="section-number">5.5a</span> <strong>Chargeback Liability Period:</strong> Recruiter shall remain liable for policy chargebacks, clawbacks, or lapses for a period of <strong>${ensureValue(formData?.acaChargebackLiability)}</strong> from the date of the Active Policy. If a policy lapses or is charged back within this period, Recruiter shall refund the full payout amount or provide a replacement agent/sale at Agency's discretion.</p>` : ""}
 
 <p><span class="section-number">${formData?.vertical === "Final Expense" && formData?.type === "CPA" ? "5.7" : formData?.type === "CPA" ? "5.6" : formData?.type === "CPL" ? "5.5" : "5.3"}</span> ${
-    formData?.type === "ACA Health"
+    formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
       ? "Residual Payments: All residual payments are made on an 'as earned' basis each month, meaning Recruiter is only paid for policies that remain active and in good standing with the carrier."
       : brokerLiabilityClause
   }</p>
 
 <p><span class="section-number">${formData?.vertical === "Final Expense" && formData?.type === "CPA" ? "5.8" : formData?.type === "CPA" ? "5.7" : formData?.type === "CPL" ? "5.6" : "5.4"}</span> ${
-    formData?.type === "ACA Health"
+    formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
       ? "Agency shall provide detailed monthly reports showing all policy sales, active policies, and payment calculations. Recruiter may audit these records upon reasonable notice."
       : "Publisher will issue detailed invoices aligned with the billing cycle specified in Exhibit A. Buyer shall remit payment within the stated net terms. Amounts not paid when due accrue interest at one and one-half percent (1.5%) per month or the maximum permitted by Applicable Law, whichever is lower."
   }</p>
 
 <p><span class="section-number">${formData?.vertical === "Final Expense" && formData?.type === "CPA" ? "5.9" : formData?.type === "CPA" ? "5.8" : formData?.type === "CPL" ? "5.7" : "5.5"}</span> ${
-    formData?.type === "ACA Health"
+    formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
       ? "Late Payments: Amounts not paid when due accrue interest at one and one-half percent (1.5%) per month or the maximum permitted by Applicable Law, whichever is lower."
       : "Publisher may suspend or reroute traffic if Buyer is more than seven (7) days past due, upon written notice."
   }</p>
@@ -2577,25 +2579,25 @@ ${acaHealthClause}
 <div class="separator"></div>
 
 <h1>6. ${
-    formData?.type === "ACA Health"
+    formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
       ? "DATA SECURITY AND PRIVACY"
       : "DATAPASS, SECURITY, AND PRIVACY"
   }</h1>
 
 <p><span class="section-number">6.1</span> ${
-    formData?.type === "ACA Health"
+    formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
       ? "Each Party shall maintain administrative, technical, and physical safeguards that meet or exceed industry standards (including SOC 2 or ISO 27001 controls when applicable) to protect agent and customer data against unauthorized access, use, or disclosure."
       : datapassClause
   }</p>
 
 <p><span class="section-number">6.2</span> ${
-    formData?.type === "ACA Health"
+    formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
       ? "All agent information, customer data, and policy details must be handled in accordance with HIPAA and applicable state insurance regulations."
       : "Each Party shall maintain administrative, technical, and physical safeguards that meet or exceed industry standards (including SOC 2 or ISO 27001 controls when applicable) to protect Call data against unauthorized access, use, or disclosure."
   }</p>
 
 <p><span class="section-number">6.3</span> ${
-    formData?.type === "ACA Health"
+    formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
       ? "Security incidents impacting agent or customer data must be reported to the other Party within twenty-four (24) hours and followed by a written incident report within forty-eight (48) hours detailing remediation steps."
       : "Security incidents impacting Call data must be reported to the other Party within twenty-four (24) hours and followed by a written incident report within forty-eight (48) hours detailing remediation steps."
   }</p>
@@ -2603,25 +2605,25 @@ ${acaHealthClause}
 <div class="separator"></div>
 
 <h1>7. ${
-    formData?.type === "ACA Health"
+    formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
       ? "REPORTING, AUDIT RIGHTS, AND RECORD RETENTION"
       : "REPORTING, AUDIT RIGHTS, AND RECORD RETENTION"
   }</h1>
 
 <p><span class="section-number">7.1</span> ${
-    formData?.type === "ACA Health"
+    formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
       ? "Agency will maintain comprehensive records of all agent recruitment activities, policy sales, active policies, and payment calculations for at least five (5) years."
       : "Publisher will maintain comprehensive call logs, consent documentation, disposition data, and QA recordings for at least five (5) years."
   }</p>
 
 <p><span class="section-number">7.2</span> ${
-    formData?.type === "ACA Health"
+    formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
       ? "Agency shall provide monthly reports to Recruiter showing all policy sales, active policies, and payment calculations. Any disputes regarding payments must be raised within thirty (30) days of the report."
       : "Buyer shall deliver invalid/disputed call notices within seventy-two (72) hours of receipt. Failure to timely dispute constitutes acceptance of the Call as Qualified."
   }</p>
 
 <p><span class="section-number">7.3</span> ${
-    formData?.type === "ACA Health"
+    formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
       ? "Each Party may audit the other's relevant records upon fifteen (15) days' prior written notice, not more than twice per twelve-month period, provided that confidentiality obligations remain intact."
       : "Each Party may audit the other's relevant records upon fifteen (15) days' prior written notice, not more than twice per twelve-month period, provided that confidentiality obligations remain intact."
   }</p>
@@ -2663,33 +2665,33 @@ ${acaHealthClause}
 <p><span class="section-number">11.3</span> Upon termination, each Party shall promptly return or destroy the other Party's Confidential Information, except for archival copies maintained in accordance with legal retention policies.</p>
 
 <p><span class="section-number">11.4</span> ${
-    formData?.type === "ACA Health"
+    formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
       ? "CUSTOMER NON-SOLICITATION: During the term of this Agreement and for a period of one (1) year following termination, Recruiter shall not directly or indirectly solicit or attempt to solicit any customers or clients of the Agency that were introduced to Recruiter through this Agreement."
       : "CUSTOMER NON-SOLICITATION: During the term of this Agreement and for a period of one (1) year following termination, Publisher shall not directly or indirectly solicit or attempt to solicit any customers or clients of Buyer that were introduced to Publisher through this Agreement."
   }</p>
 
 ${
-  formData?.type === "Employment Contract" || formData?.type === "ACA Health"
+  formData?.type === "Employment Contract" || (formData?.type === "ACA Health" && formData?.acaSubType === "Partnership")
     ? `<p><span class="section-number">11.5</span> EMPLOYEE NON-SOLICITATION: During the term of this Agreement and for a period of one (1) year following termination, neither Party shall directly or indirectly solicit, recruit, or hire employees or contractors of the other Party without prior written consent.</p>`
     : ""
 }
 
 <p><span class="section-number">${
-    formData?.type === "Employment Contract" || formData?.type === "ACA Health"
+    formData?.type === "Employment Contract" || (formData?.type === "ACA Health" && formData?.acaSubType === "Partnership")
       ? "11.6"
       : "11.5"
   }</span> ${
-    formData?.type === "ACA Health"
+    formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
       ? "TRADE SECRETS: All agent recruitment methodologies, training materials, sales processes, and business strategies developed or disclosed during this Agreement shall be considered trade secrets and subject to the confidentiality provisions herein."
       : "TRADE SECRETS: All call generation methodologies, traffic sources, conversion optimization techniques, and business strategies developed or disclosed during this Agreement shall be considered trade secrets and subject to the confidentiality provisions herein."
   }</p>
 
 <p><span class="section-number">${
-    formData?.type === "Employment Contract" || formData?.type === "ACA Health"
+    formData?.type === "Employment Contract" || (formData?.type === "ACA Health" && formData?.acaSubType === "Partnership")
       ? "11.7"
       : "11.6"
   }</span> ${
-    formData?.type === "ACA Health"
+    formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
       ? "CONFIDENTIALITY DURATION: The confidentiality obligations set forth in this Section 11 shall survive termination of this Agreement and continue for a period of five (5) years from the date of termination."
       : "CONFIDENTIALITY DURATION: The confidentiality obligations set forth in this Section 11 shall survive termination of this Agreement and continue for a period of five (5) years from the date of termination."
   }</p>
@@ -2701,19 +2703,19 @@ ${
 <p><span class="section-number">12.1</span> This Agreement commences on the Effective Date and continues until terminated by either Party upon five (5) business days' written notice.</p>
 
 <p><span class="section-number">12.2</span> Either Party may terminate immediately upon written notice for (a) uncured material breach after three (3) business days; (b) ${
-    formData?.type === "ACA Health"
+    formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
       ? "repeated failure to recruit qualified agents or maintain agent performance standards"
       : "repeated invalid or fraudulent Calls"
   }; (c) non-payment beyond the cure period; or (d) regulatory or compliance violations creating material legal exposure.</p>
 
 ${
-  formData?.type === "Employment Contract" || formData?.type === "ACA Health"
+  formData?.type === "Employment Contract" || (formData?.type === "ACA Health" && formData?.acaSubType === "Partnership")
     ? `<p><span class="section-number">12.3</span> RESIDUAL COMMISSION PROTECTION: Recruiter's residual commissions cannot be taken away for any reason other than the client no longer has an active policy with any carrier of the agency. All earned residual commissions shall continue to be paid according to the terms of this Agreement regardless of termination.</p>`
     : ""
 }
 
 <p><span class="section-number">${
-    formData?.type === "Employment Contract" || formData?.type === "ACA Health"
+    formData?.type === "Employment Contract" || (formData?.type === "ACA Health" && formData?.acaSubType === "Partnership")
       ? "12.4"
       : "12.3"
   }</span> Sections 5 through 15 shall survive expiration or termination.</p>
@@ -2731,25 +2733,25 @@ ${
 <p><span class="section-number">14.1</span> This Agreement shall be governed by and construed in accordance with the laws of ${governingLaw}, without regard to conflict-of-law principles.</p>
 
 <p><span class="section-number">14.2</span> ${
-    formData?.type === "ACA Health"
+    formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
       ? "MEDIATION: Before initiating any formal dispute resolution process, the Parties shall attempt to resolve disputes through good faith negotiations and, if necessary, mediation with a mutually agreed mediator within thirty (30) days of written notice of the dispute."
       : "The Parties shall escalate disputes to executive-level negotiations."
   }</p>
 
 <p><span class="section-number">14.3</span> ${
-    formData?.type === "ACA Health"
+    formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
       ? "ARBITRATION: If mediation fails, any dispute arising under this Agreement shall be submitted to binding arbitration administered by JAMS under its Streamlined Arbitration Rules before a single arbitrator with expertise in insurance and recruitment matters, seated in the venue mutually agreed by the Parties."
       : "If the Parties cannot resolve a dispute within fifteen (15) days, the matter shall be submitted to binding arbitration administered by JAMS under its Streamlined Arbitration Rules before a single arbitrator seated in the venue mutually agreed by the Parties."
   }</p>
 
 <p><span class="section-number">14.4</span> ${
-    formData?.type === "ACA Health"
+    formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
       ? "ARBITRATION PROCEDURES: The arbitrator shall have the authority to award injunctive relief, specific performance, and monetary damages. The arbitration shall be conducted in English and the arbitrator's decision shall be final and binding."
       : "Judgment on the arbitration award may be entered in any court of competent jurisdiction."
   }</p>
 
 <p><span class="section-number">14.5</span> ${
-    formData?.type === "ACA Health"
+    formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
       ? "COSTS: Each Party shall bear its own costs and attorneys' fees, unless the arbitrator determines that one Party's claims were frivolous or brought in bad faith, in which case the prevailing Party may be awarded reasonable costs and attorneys' fees."
       : "COSTS: Each Party shall bear its own costs and attorneys' fees, unless the arbitrator determines that one Party's claims were frivolous or brought in bad faith, in which case the prevailing Party may be awarded reasonable costs and attorneys' fees."
   }</p>
@@ -2772,7 +2774,7 @@ ${
 
 <div class="exhibit-section">
 <h2 class="exhibit-title">EXHIBIT A - ${
-    formData?.type === "ACA Health"
+    formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
       ? "AGENT RECRUITMENT SPECIFICATIONS"
       : formData?.type === "Employment Contract"
         ? "COMPENSATION STRUCTURE"
@@ -2847,15 +2849,15 @@ ${
 `
     : `
 <p class="no-indent"><strong>${
-        formData?.type === "ACA Health"
+        formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
           ? "Service Vertical"
           : "Campaign Vertical"
       }:</strong> ${ensureValue(formData?.vertical)}</p>
 <p class="no-indent"><strong>${
-        formData?.type === "ACA Health" ? "Service Type" : "Campaign Type"
+        formData?.type === "ACA Health" && formData?.acaSubType === "Partnership" ? "Service Type" : "Campaign Type"
       }:</strong> ${ensureValue(formData?.type)}</p>
 <p class="no-indent"><strong>${
-        formData?.type === "ACA Health"
+        formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
           ? "Service Definition"
           : "Billable Event Definition"
       }:</strong> ${
@@ -2874,7 +2876,7 @@ ${
             : "The agreed CPA conversion event"
       }</p>
 <p class="no-indent"><strong>${
-        formData?.type === "ACA Health" ? "Payment Structure" : "Payout"
+        formData?.type === "ACA Health" && formData?.acaSubType === "Partnership" ? "Payment Structure" : "Payout"
       }:</strong> ${
         formData?.type === "ACA Health"
           ? formData?.acaSubType === "CPL"
@@ -2893,35 +2895,35 @@ ${
             : `${formatCurrency(formData?.payout)} per Qualified Call`
       }</p>
 <p class="no-indent"><strong>${
-        formData?.type === "ACA Health"
+        formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
           ? "Agent Licensing Requirements"
           : "Proof of Consent Requirement"
       }:</strong> ${
-        formData?.type === "ACA Health"
+        formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
           ? "All agents must be properly licensed to sell ACA health insurance in their respective states"
           : ensureValue(formData?.proofOfConsent)
       }</p>
-${formData?.type === "ACA Health" ? `<p class="no-indent"><strong>Billing Cycle:</strong> ${ensureValue(formData?.acaBillingCycle)}</p>` : ""}
-${formData?.type === "ACA Health" ? `<p class="no-indent"><strong>Chargeback Liability Period:</strong> ${ensureValue(formData?.acaChargebackLiability)}</p>` : ""}
-${formData?.type === "ACA Health" ? `<p class="no-indent"><strong>Agreement Duration:</strong> ${ensureValue(formData?.acaDuration)} months</p>` : ""}
+${formData?.type === "ACA Health" && formData?.acaSubType === "Partnership" ? `<p class="no-indent"><strong>Billing Cycle:</strong> ${ensureValue(formData?.acaBillingCycle)}</p>` : ""}
+${formData?.type === "ACA Health" && formData?.acaSubType === "Partnership" ? `<p class="no-indent"><strong>Chargeback Liability Period:</strong> ${ensureValue(formData?.acaChargebackLiability)}</p>` : ""}
+${formData?.type === "ACA Health" && formData?.acaSubType === "Partnership" ? `<p class="no-indent"><strong>Agreement Duration:</strong> ${ensureValue(formData?.acaDuration)} months</p>` : ""}
 ${formData?.vertical === "Final Expense" && formData?.type === "CPA" ? `<p class="no-indent"><strong>Chargeback Liability:</strong> ${ensureValue(formData?.chargebackLiability)}</p>` : ""}
 <p class="no-indent"><strong>${
-        formData?.type === "ACA Health"
+        formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
           ? "Agency Liability"
           : "Broker Liability"
       }:</strong> ${formData?.brokerLiability ? "Accepted" : "Declined"}</p>
 <p class="no-indent"><strong>${
-        formData?.type === "ACA Health"
+        formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
           ? "Reporting Requirements"
           : "Export to Sheets"
       }:</strong> ${formData?.exportToSheets ? "Enabled" : "Disabled"}</p>
 <p class="no-indent"><strong>${
-        formData?.type === "ACA Health"
+        formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
           ? "Agency Contact"
           : "Primary Routing Destination"
       }:</strong> ${ensureValue(formData?.buyer?.phone)}</p>
 <p class="no-indent"><strong>${
-        formData?.type === "ACA Health"
+        formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
           ? "Compliance & Regulatory Requirements"
           : "Compliance & Targeting Requirements"
       }:</strong></p>
