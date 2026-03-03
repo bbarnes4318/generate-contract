@@ -2943,8 +2943,7 @@ ${requirementsSection}
   <li style="margin-bottom: 8px; line-height: 1.4;">Payout per Qualified Call: ${formatCurrency(formData?.acaCplPayout || "Not Provided")}</li>
   <li style="margin-bottom: 8px; line-height: 1.4;">Minimum Call Duration (Buffer Time): ${ensureValue(formData?.acaCplBufferTime)} seconds</li>
   <li style="margin-bottom: 8px; line-height: 1.4;">Billing Cycle: ${ensureValue(formData?.acaBillingCycle)}</li>
-  <li style="margin-bottom: 8px; line-height: 1.4;">Chargeback Liability Period: ${ensureValue(formData?.acaChargebackLiability)}</li>
-  <li style="margin-bottom: 8px; line-height: 1.4;">Agreement Duration: ${ensureValue(formData?.acaDuration)} months</li>
+
   <li style="margin-bottom: 8px; line-height: 1.4;">Calls below the ${ensureValue(formData?.acaCplBufferTime)}-second threshold are non-billable</li>
 </ul>
 </div>`
@@ -2956,8 +2955,7 @@ ${requirementsSection}
   <li style="margin-bottom: 8px; line-height: 1.4;">Payout per Qualified Enrollment: ${formatCurrency(formData?.acaCpaPayout || "Not Provided")}</li>
   <li style="margin-bottom: 8px; line-height: 1.4;">Payment contingent on policy being issued and first premium paid</li>
   <li style="margin-bottom: 8px; line-height: 1.4;">Billing Cycle: ${ensureValue(formData?.acaBillingCycle)}</li>
-  <li style="margin-bottom: 8px; line-height: 1.4;">Chargeback Liability Period: ${ensureValue(formData?.acaChargebackLiability)}</li>
-  <li style="margin-bottom: 8px; line-height: 1.4;">Agreement Duration: ${ensureValue(formData?.acaDuration)} months</li>
+
   <li style="margin-bottom: 8px; line-height: 1.4;">Publisher will replace enrollments where insured fails to pay first premium</li>
 </ul>
 </div>`
