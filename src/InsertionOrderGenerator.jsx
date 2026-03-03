@@ -2074,8 +2074,8 @@ My Commission Expires: ${ensureValue(formData?.llcNotaryExpiration)}</p>
 <div class="contract-header">
 <img src="${
     typeof window !== "undefined"
-      ? window.location.origin + "/pvnvoice.png"
-      : "/pvnvoice.png"
+      ? window.location.origin + "/pvnvoice3.png"
+      : "/pvnvoice3.png"
   }" alt="PVNVoice Logo" class="contract-logo" onerror="this.style.display='none'" />
 <h1>${getContractTitle()}</h1>
 <p class="contract-subtitle">Effective Date: ${effectiveDate}</p>
@@ -8631,12 +8631,10 @@ const ContractSigningPage = ({ contractId, db, auth }) => {
               alt="PVNVoice"
               style={{ height: "28px" }}
             />
-            <div>
-              <h1 className="text-base font-bold text-white">PVNVoice Legal</h1>
-              <p className="text-xs text-slate-300">
-                Secure Electronic Signature
-              </p>
-            </div>
+            <div className="h-5 w-px bg-slate-500" />
+            <p className="text-xs font-medium tracking-wide text-slate-300 uppercase">
+              Secure Electronic Signature
+            </p>
           </div>
           <div className="flex items-center gap-3">
             {/* Status Badge */}
