@@ -3574,8 +3574,10 @@ const InsertionOrderGenerator = () => {
 
       if (!hasAttemptedCustom) {
         hasAttemptedCustom = true;
+        // Skip custom token for signing page visitors (they don't have tokens)
+        const isSigningPage = new URLSearchParams(window.location.search).has("sign");
         const token = window.__initial_auth_token;
-        if (token) {
+        if (token && !isSigningPage) {
           try {
             await signInWithCustomToken(auth, token);
             return;
@@ -4067,6 +4069,19 @@ const InsertionOrderGenerator = () => {
   }
 
   if (authStatus === "error") {
+    // If on signing page, still render it (it handles its own auth gracefully)
+    if (signingContractId && db) {
+      return (
+        <>
+          <style>{GLOBAL_STYLE_BLOCK}</style>
+          <ContractSigningPage
+            contractId={signingContractId}
+            db={db}
+            auth={auth}
+          />
+        </>
+      );
+    }
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50 px-6 py-10">
         <div className="max-w-lg rounded-2xl border border-rose-200 bg-white p-6 text-center shadow-xl">
