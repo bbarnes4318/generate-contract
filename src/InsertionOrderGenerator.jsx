@@ -7733,6 +7733,21 @@ const ContractView = ({
       );
     }
 
+    // Inject signer names into the Authorized Signatory lines
+    if (buyerSigned && buyerPrintedName) {
+      html = html.replace(
+        /(Buyer Signature[\s\S]*?<div style="border-bottom: 1px solid #000; height: 30px; margin-bottom: 10px;">)<\/div>/,
+        `$1<span style="font-size: 14px; font-weight: bold;">${buyerPrintedName}</span></div>`,
+      );
+    }
+
+    if (publisherSigned && publisherPrintedName) {
+      html = html.replace(
+        /(Publisher Signature[\s\S]*?<div style="border-bottom: 1px solid #000; height: 30px; margin-bottom: 10px;">)<\/div>/,
+        `$1<span style="font-size: 14px; font-weight: bold;">${publisherPrintedName}</span></div>`,
+      );
+    }
+
     return html;
   }, [
     contractText,
@@ -7742,6 +7757,8 @@ const ContractView = ({
     publisherSigned,
     buyerSignDate,
     publisherSignDate,
+    buyerPrintedName,
+    publisherPrintedName,
   ]);
 
   const handleBuyerSign = () => {
@@ -8383,6 +8400,13 @@ const ContractSigningPage = ({ contractId, db, auth }) => {
           `$1Date: ${buyerDate}`,
         );
       }
+      // Inject buyer signer name into the Authorized Signatory line
+      if (contractData.buyerSignature.signerName) {
+        html = html.replace(
+          /(Buyer Signature[\s\S]*?<div style="border-bottom: 1px solid #000; height: 30px; margin-bottom: 10px;">)<\/div>/,
+          `$1<span style="font-size: 14px; font-weight: bold;">${contractData.buyerSignature.signerName}</span></div>`,
+        );
+      }
     }
 
     // Inject publisher signature if present
@@ -8411,6 +8435,13 @@ const ContractSigningPage = ({ contractId, db, auth }) => {
         html = html.replace(
           /(Publisher Signature[\s\S]*?)Date: _______________/,
           `$1Date: ${pubDate}`,
+        );
+      }
+      // Inject publisher signer name into the Authorized Signatory line
+      if (contractData.publisherSignature.signerName) {
+        html = html.replace(
+          /(Publisher Signature[\s\S]*?<div style="border-bottom: 1px solid #000; height: 30px; margin-bottom: 10px;">)<\/div>/,
+          `$1<span style="font-size: 14px; font-weight: bold;">${contractData.publisherSignature.signerName}</span></div>`,
         );
       }
     }
