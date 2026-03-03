@@ -8258,7 +8258,7 @@ const ContractView = ({
 // ContractSigningPage â€” Standalone signing view for shareable links
 // Loads contract from Firestore, displays it, and allows each party to sign independently
 // â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”
-const ContractSigningPage = ({ contractId, db }) => {
+const ContractSigningPage = ({ contractId, db, auth }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [contractData, setContractData] = useState(null);
@@ -8276,7 +8276,7 @@ const ContractSigningPage = ({ contractId, db }) => {
     ? contractId.split(":")
     : [null, null];
 
-  // Load contract from Firestore
+  // Load contract from Firestore (with independent auth)
   useEffect(() => {
     if (!db || !userId || !docId) {
       setError("Invalid signing link format.");
@@ -8286,6 +8286,16 @@ const ContractSigningPage = ({ contractId, db }) => {
     const loadContract = async () => {
       try {
         setLoading(true);
+
+        // Ensure we have a Firebase auth context for Firestore access
+        if (auth && !auth.currentUser) {
+          try {
+            await signInAnonymously(auth);
+          } catch (authErr) {
+            console.warn("Anonymous auth failed, trying without:", authErr);
+          }
+        }
+
         const docSnap = await getDoc(
           doc(db, "users", userId, "insertionOrders", docId),
         );
