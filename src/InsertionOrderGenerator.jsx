@@ -7720,15 +7720,18 @@ const ContractView = ({
       );
     }
 
-    // Replace date placeholders
+    // Replace date placeholders - position-aware to match correct party
     if (buyerSignDate) {
-      html = html.replace("Date: _______________", `Date: ${buyerSignDate}`);
+      html = html.replace(
+        /(Buyer Signature[\s\S]*?)Date: _______________/,
+        `$1Date: ${buyerSignDate}`,
+      );
     }
 
     if (publisherSignDate) {
       html = html.replace(
-        "Date: _______________",
-        `Date: ${publisherSignDate}`,
+        /(Publisher Signature[\s\S]*?)Date: _______________/,
+        `$1Date: ${publisherSignDate}`,
       );
     }
 
@@ -8362,7 +8365,7 @@ const ContractSigningPage = ({ contractId, db, auth }) => {
         /(<div style="border: 1px solid #000; height: 50px;[^"]*display: flex; align-items: center; justify-content: center;">\s*)(<div style="height: 40px;"><\/div>\s*)(<\/div>\s*<div style="font-size: 14px; font-weight: bold;">Buyer Signature)/s,
         `$1<img src="${contractData.buyerSignature.data}" style="max-height: 45px; max-width: 95%;" />$3`,
       );
-      // Replace first date placeholder
+      // Replace buyer date placeholder (the Date: ___ that appears AFTER "Buyer Signature")
       if (contractData.buyerSignature.signedAt) {
         const buyerDate = contractData.buyerSignature.signedAt?.toDate
           ? contractData.buyerSignature.signedAt
@@ -8376,7 +8379,11 @@ const ContractSigningPage = ({ contractId, db, auth }) => {
               "en-US",
               { month: "long", day: "numeric", year: "numeric" },
             );
-        html = html.replace("Date: _______________", `Date: ${buyerDate}`);
+        // Match the date placeholder that follows "Buyer Signature" (within the buyer's block)
+        html = html.replace(
+          /(Buyer Signature[\s\S]*?)Date: _______________/,
+          `$1Date: ${buyerDate}`,
+        );
       }
     }
 
@@ -8386,6 +8393,7 @@ const ContractSigningPage = ({ contractId, db, auth }) => {
         /(<div style="border: 1px solid #000; height: 50px;[^"]*display: flex; align-items: center; justify-content: center;">\s*)(<div style="height: 40px;"><\/div>\s*)(<\/div>\s*<div style="font-size: 14px; font-weight: bold;">Publisher Signature)/s,
         `$1<img src="${contractData.publisherSignature.data}" style="max-height: 45px; max-width: 95%;" />$3`,
       );
+      // Replace publisher date placeholder (the Date: ___ that appears AFTER "Publisher Signature")
       if (contractData.publisherSignature.signedAt) {
         const pubDate = contractData.publisherSignature.signedAt?.toDate
           ? contractData.publisherSignature.signedAt
@@ -8402,7 +8410,10 @@ const ContractSigningPage = ({ contractId, db, auth }) => {
               day: "numeric",
               year: "numeric",
             });
-        html = html.replace("Date: _______________", `Date: ${pubDate}`);
+        html = html.replace(
+          /(Publisher Signature[\s\S]*?)Date: _______________/,
+          `$1Date: ${pubDate}`,
+        );
       }
     }
 
