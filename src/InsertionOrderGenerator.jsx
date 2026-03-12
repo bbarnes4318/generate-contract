@@ -2428,15 +2428,13 @@ ${
 <h1>${formData?.type === "Employment Contract" ? "7" : "3"}. ${
     formData?.type === "Employment Contract"
       ? "GOVERNING LAW AND DISPUTE RESOLUTION"
-      : formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
-        ? "AGENT LICENSING AND COMPLIANCE"
-        : formData?.type === "ACA Health"
-          ? "COMPLIANCE WITH TELEMARKETING LAWS (TCPA & DNC)"
-          : "CONSENT, EVIDENCE, AND COMPLIANCE"
+      : formData?.type === "ACA Health"
+        ? "COMPLIANCE WITH TELEMARKETING LAWS (TCPA & DNC)"
+        : "CONSENT, EVIDENCE, AND COMPLIANCE"
   }</h1>
 
 ${
-  formData?.type === "ACA Health" && formData?.acaSubType !== "Partnership"
+  formData?.type === "ACA Health"
     ? `<p><span class="section-number">3.1</span> <strong>Representations and Warranties of Compliance.</strong> Publisher represents and warrants that all marketing, lead generation, and call routing activities performed under this Agreement shall strictly comply with all applicable federal, state, and local laws, rules, and regulations. This includes, without limitation, the Telephone Consumer Protection Act of 1991 (47 U.S.C. § 227) and its implementing regulations (collectively, the "TCPA"), the Telemarketing Sales Rule (16 C.F.R. Part 310), the National Do Not Call (DNC) Registry, and any applicable state-level telemarketing or privacy equivalents.</p>
 
 <p><span class="section-number">3.2</span> <strong>Prior Express Written Consent (PEWC).</strong> Publisher warrants that for every lead generated or call transferred to the Agency via an automatic telephone dialing system (ATDS), artificial voice, or prerecorded message, Publisher has obtained valid, legally documented Prior Express Written Consent (PEWC) from the consumer to be contacted. Such consent shall clearly and conspicuously authorize the communication and shall comply with all current federal guidelines at the time the consent is captured.</p>
@@ -2455,21 +2453,15 @@ ${
 
 <p><span class="section-number">3.9</span> <strong>Limited Right to Audit.</strong> The Agency may, no more than once per calendar year and upon no less than thirty (30) days' prior written notice, request an audit of Publisher's consent records solely as they pertain to the campaigns executed under this Agreement. Such audit shall be conducted during normal business hours, at the Agency's expense, and shall not unreasonably interfere with Publisher's business operations.</p>`
     : `<p><span class="section-number">3.1</span> ${
-        formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
-          ? "All recruited agents must be properly licensed to sell ACA health insurance in their respective states. Recruiter shall verify and maintain records of all agent licenses and ensure compliance with state insurance regulations."
-          : "Publisher will capture, maintain, and furnish proof of consent for all Calls in accordance with Applicable Law, including Jornaya LeadID, TrustedForm Certificates, or equivalent."
+        "Publisher will capture, maintain, and furnish proof of consent for all Calls in accordance with Applicable Law, including Jornaya LeadID, TrustedForm Certificates, or equivalent."
       }</p>
 
 <p><span class="section-number">3.2</span> ${
-        formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
-          ? "Recruiter shall ensure all recruited agents complete required training and certification programs for ACA health insurance sales. Agency shall provide ongoing compliance support and monitoring."
-          : "Consent and call recordings will be retained for a minimum of five (5) years. Buyer shall notify Publisher within one (1) business day of any consumer revocation of consent."
+        "Consent and call recordings will be retained for a minimum of five (5) years. Buyer shall notify Publisher within one (1) business day of any consumer revocation of consent."
       }</p>
 
 <p><span class="section-number">3.3</span> ${
-        formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
-          ? "Each Party shall cooperate in good faith to investigate any compliance issues or regulatory inquiries within two (2) business days of notice and implement mutually agreed remediation steps."
-          : "Each Party shall cooperate in good faith to investigate disputes or regulatory inquiries within two (2) business days of notice and implement mutually agreed remediation steps."
+        "Each Party shall cooperate in good faith to investigate disputes or regulatory inquiries within two (2) business days of notice and implement mutually agreed remediation steps."
       }</p>`
 }
 
