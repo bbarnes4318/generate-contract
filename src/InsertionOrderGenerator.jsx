@@ -2430,26 +2430,48 @@ ${
       ? "GOVERNING LAW AND DISPUTE RESOLUTION"
       : formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
         ? "AGENT LICENSING AND COMPLIANCE"
-        : "CONSENT, EVIDENCE, AND COMPLIANCE"
+        : formData?.type === "ACA Health"
+          ? "COMPLIANCE WITH TELEMARKETING LAWS (TCPA & DNC)"
+          : "CONSENT, EVIDENCE, AND COMPLIANCE"
   }</h1>
 
-<p><span class="section-number">3.1</span> ${
-    formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
-      ? "All recruited agents must be properly licensed to sell ACA health insurance in their respective states. Recruiter shall verify and maintain records of all agent licenses and ensure compliance with state insurance regulations."
-      : "Publisher will capture, maintain, and furnish proof of consent for all Calls in accordance with Applicable Law, including Jornaya LeadID, TrustedForm Certificates, or equivalent."
-  }</p>
+${
+  formData?.type === "ACA Health" && formData?.acaSubType !== "Partnership"
+    ? `<p><span class="section-number">3.1</span> <strong>Representations and Warranties of Compliance.</strong> Publisher represents and warrants that all marketing, lead generation, and call routing activities performed under this Agreement shall strictly comply with all applicable federal, state, and local laws, rules, and regulations. This includes, without limitation, the Telephone Consumer Protection Act of 1991 (47 U.S.C. § 227) and its implementing regulations (collectively, the "TCPA"), the Telemarketing Sales Rule (16 C.F.R. Part 310), the National Do Not Call (DNC) Registry, and any applicable state-level telemarketing or privacy equivalents.</p>
+
+<p><span class="section-number">3.2</span> <strong>Prior Express Written Consent (PEWC).</strong> Publisher warrants that for every lead generated or call transferred to the Agency via an automatic telephone dialing system (ATDS), artificial voice, or prerecorded message, Publisher has obtained valid, legally documented Prior Express Written Consent (PEWC) from the consumer to be contacted. Such consent shall clearly and conspicuously authorize the communication and shall comply with all current federal guidelines at the time the consent is captured.</p>
+
+<p><span class="section-number">3.3</span> <strong>Proof of Consent and Record Retention.</strong> Publisher shall maintain comprehensive records of consumer consent for a minimum period of five (5) years from the date each call or lead is generated. Valid proof of consent must include the consumer's IP address, date and time stamp, the URL of the opt-in form, and an unalterable third-party certificate of consent or session replay (e.g., ActiveProspect TrustedForm or Jornaya LeadiD).</p>
+
+<p><span class="section-number">3.4</span> <strong>Revocation of Consent and Opt-Outs.</strong> Publisher agrees to maintain a comprehensive internal Do Not Call list and to honor any consumer requests to opt out of future communications. In accordance with current FCC regulations, Publisher shall process and honor all consumer revocation requests, made via any reasonable method, within ten (10) business days of receipt. Publisher shall not transfer any call or lead to the Agency if the consumer has previously revoked consent.</p>
+
+<p><span class="section-number">3.5</span> <strong>Notice of Dispute and Right to Cure.</strong> In the event of a consumer complaint, regulatory inquiry, or if the Agency reasonably believes a transferred call or lead lacks valid consent, the Agency shall notify Publisher in writing within three (3) business days of identifying the issue. Publisher shall then have forty-eight (48) hours from receipt of such notice to provide the Agency with valid proof of consent (as defined in Section 3.3). The Agency may not withhold payment for calls or leads where valid proof of consent is timely provided.</p>
+
+<p><span class="section-number">3.6</span> <strong>Mutual Indemnification.</strong> Each party (the "Indemnifying Party") agrees to indemnify, defend, and hold harmless the other party, its affiliates, officers, and employees (the "Indemnified Party") from and against any claims, regulatory actions, class actions, liabilities, damages, fines, or costs (including reasonable attorneys' fees) arising out of the Indemnifying Party's gross negligence, willful misconduct, or material breach of its obligations under this Section 3.</p>
+
+<p><span class="section-number">3.7</span> <strong>Limitations on Publisher's Indemnification.</strong> Publisher's indemnification obligation regarding TCPA/DNC compliance is expressly limited to the validity of the consumer's consent and Publisher's calling practices prior to and at the time the call or lead is successfully transferred to the Agency. Publisher shall bear no liability for, and the Agency shall indemnify Publisher against, any claims arising from the Agency's subsequent handling of the lead, the Agency's internal dialing practices, the conduct of the Agency's sales representatives, or the Agency's failure to honor a consumer's request to terminate a call or opt out after the transfer has occurred.</p>
+
+<p><span class="section-number">3.8</span> <strong>Defense of Claims.</strong> In the event of a claim subject to indemnification by Publisher, Publisher shall have the right to assume the defense of the claim with legal counsel of its own choosing. The Agency shall reasonably cooperate with Publisher in the defense. Publisher shall not enter into any settlement that admits fault on the part of the Agency without the Agency's prior written consent, which shall not be unreasonably withheld.</p>
+
+<p><span class="section-number">3.9</span> <strong>Limited Right to Audit.</strong> The Agency may, no more than once per calendar year and upon no less than thirty (30) days' prior written notice, request an audit of Publisher's consent records solely as they pertain to the campaigns executed under this Agreement. Such audit shall be conducted during normal business hours, at the Agency's expense, and shall not unreasonably interfere with Publisher's business operations.</p>`
+    : `<p><span class="section-number">3.1</span> ${
+        formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
+          ? "All recruited agents must be properly licensed to sell ACA health insurance in their respective states. Recruiter shall verify and maintain records of all agent licenses and ensure compliance with state insurance regulations."
+          : "Publisher will capture, maintain, and furnish proof of consent for all Calls in accordance with Applicable Law, including Jornaya LeadID, TrustedForm Certificates, or equivalent."
+      }</p>
 
 <p><span class="section-number">3.2</span> ${
-    formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
-      ? "Recruiter shall ensure all recruited agents complete required training and certification programs for ACA health insurance sales. Agency shall provide ongoing compliance support and monitoring."
-      : "Consent and call recordings will be retained for a minimum of five (5) years. Buyer shall notify Publisher within one (1) business day of any consumer revocation of consent."
-  }</p>
+        formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
+          ? "Recruiter shall ensure all recruited agents complete required training and certification programs for ACA health insurance sales. Agency shall provide ongoing compliance support and monitoring."
+          : "Consent and call recordings will be retained for a minimum of five (5) years. Buyer shall notify Publisher within one (1) business day of any consumer revocation of consent."
+      }</p>
 
 <p><span class="section-number">3.3</span> ${
-    formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
-      ? "Each Party shall cooperate in good faith to investigate any compliance issues or regulatory inquiries within two (2) business days of notice and implement mutually agreed remediation steps."
-      : "Each Party shall cooperate in good faith to investigate disputes or regulatory inquiries within two (2) business days of notice and implement mutually agreed remediation steps."
-  }</p>
+        formData?.type === "ACA Health" && formData?.acaSubType === "Partnership"
+          ? "Each Party shall cooperate in good faith to investigate any compliance issues or regulatory inquiries within two (2) business days of notice and implement mutually agreed remediation steps."
+          : "Each Party shall cooperate in good faith to investigate disputes or regulatory inquiries within two (2) business days of notice and implement mutually agreed remediation steps."
+      }</p>`
+}
 
 <div class="separator"></div>
 
